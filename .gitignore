@@ -1,0 +1,61 @@
+# Tulis ulang pakai PowerShell (tanpa BOM)
+@'
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Data
+Download/
+data/
+logs/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Config
+config/*.json
+!config/*.example.json
+paths.txt
+cookies.txt
+*.cookies
+
+# Wails
+website-wails/build/bin/
+website-wails/build/windows/
+website-wails/frontend/node_modules/
+website-wails/frontend/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Logs/temp
+*.log
+*.bak
+*.tmp
+*.swp
+debug_fb_result.txt
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Debug scripts
+debug_*.py
+test_*.py
+!tests/
+'@ | Out-File -Encoding ascii .gitignore
