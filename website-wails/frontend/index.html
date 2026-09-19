@@ -1,0 +1,4390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-hover: #1f2b4a;
+            --accent: #0f3460;
+            --accent-light: #4a9eff;
+            --text: #eaeaea;
+            --text-muted: #888;
+            --success: #00d9ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--bg-card) 100%);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .lang-selector {
+            background: var(--bg-dark);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .lang-selector:hover {
+            border-color: var(--accent-light);
+        }
+
+        .btn {
+            background: var(--accent);
+            color: var(--text);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.15s ease-out;
+        }
+
+        .btn:hover {
+            background: var(--accent-light);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+               /* ═══ FILTERS V2 — SIMPLIFIED ═══ */
+        .filters-v2 {
+            background: var(--bg-card);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-search {
+            position: relative;
+            flex: 1;
+            min-width: 220px;
+            max-width: 340px;
+        }
+        .filter-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+        .filter-search input {
+            width: 100%;
+            padding: 9px 12px 9px 38px;
+            background: var(--bg-dark);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .filter-search input:focus {
+            border-color: var(--accent-light);
+        }
+
+        .filter-select {
+            padding: 9px 32px 9px 12px;
+            background: var(--bg-dark);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            font-size: 0.88rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.15s;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%2010%2010%22%3E%3Cpath%20fill%3D%22%23888%22%20d%3D%22M5%207L1%203h8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+        .filter-select:hover {
+            border-color: var(--accent-light);
+        }
+        .filter-select:focus {
+            border-color: var(--accent-light);
+        }
+
+        #accountFilter {
+            max-width: 200px;
+            min-width: 140px;
+        }
+
+        .filter-btn {
+            padding: 9px 16px;
+            background: var(--bg-dark);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .filter-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent-light);
+        }
+        .filter-btn.active {
+            background: var(--accent-light);
+            color: var(--bg-dark);
+            border-color: var(--accent-light);
+        }
+        .filter-btn-more {
+            min-width: 100px;
+            justify-content: center;
+        }
+        .filter-btn-reset {
+            padding: 9px 14px;
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+        .filter-btn-reset:hover {
+            background: #7f1d1d;
+            border-color: #ef4444;
+            color: #fff;
+        }
+
+        .filters-advanced {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 12px 14px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px dashed var(--accent);
+            animation: slideDown 0.2s ease-out;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .filter-group-inline {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 130px;
+        }
+        .filter-group-inline label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-group-inline .filter-select {
+            min-width: 140px;
+        }
+
+        .filter-chips {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 8px 12px;
+            background: rgba(74,158,255,0.08);
+            border-left: 3px solid var(--accent-light);
+            border-radius: 6px;
+            font-size: 0.82rem;
+            animation: slideDown 0.2s ease-out;
+        }
+        .filter-chips-label {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .filter-chips-list {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--accent-light);
+            color: var(--bg-dark);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .filter-chip:hover {
+            background: #ff2d55;
+            color: #fff;
+        }
+        .filter-chip .chip-close {
+            font-size: 0.9rem;
+            font-weight: bold;
+            opacity: 0.7;
+        }
+        .filter-chip:hover .chip-close {
+            opacity: 1;
+        }
+        .filter-chips-clear {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.78rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .filter-chips-clear:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+        }
+
+        .filters-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .stats-info {
+            display: flex;
+            gap: 20px;
+        }
+        .stat-item {
+            color: var(--success);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .loading-indicator {
+            color: var(--accent-light);
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 1400px) {
+            .filter-search {
+                min-width: 180px;
+                max-width: 240px;
+            }
+            .filter-select {
+                padding: 8px 28px 8px 10px;
+                font-size: 0.82rem;
+            }
+        }
+        @media (max-width: 1100px) {
+            #accountFilter {
+                max-width: 160px;
+            }
+            .filter-search {
+                min-width: 140px;
+                max-width: 200px;
+            }
+        }
+
+        /* Stats */
+        .stats {
+            background: var(--bg-dark);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .stats-info {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            color: var(--success);
+            font-size: 0.9rem;
+        }
+
+        .loading-indicator {
+            color: var(--accent-light);
+            font-size: 0.85rem;
+        }
+
+        /* Grid Container */
+        .grid-container {
+            height: calc(100vh - 180px);
+            overflow-y: auto;
+            padding: 20px;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            will-change: scroll-position;
+        }
+
+        .grid-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .grid-container::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        .grid-container::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        .grid-container::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-light);
+        }
+
+        .media-grid {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            contain: layout style;
+        }
+
+        /* Media Card */
+        .media-card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transform: translateZ(0);
+            will-change: transform;
+            transition: transform 0.15s ease-out,
+                        border-color 0.2s,
+                        box-shadow 0.25s,
+                        opacity 0.25s;
+            contain: layout style paint;
+            content-visibility: auto;
+            contain-intrinsic-size: 350px;
+            position: relative;
+            border: 2px solid transparent;
+        }
+
+        .media-card:hover {
+            transform: translateZ(0) translateY(-3px);
+        }
+
+        .media-card.selectable:hover {
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .media-card.selected {
+            border-color: #ff2d55;
+            box-shadow:
+                0 0 0 1px rgba(255,45,85,0.4),
+                0 6px 28px rgba(255,45,85,0.35);
+            transform: translateZ(0) translateY(-3px);
+        }
+
+        .card-header {
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .card-account {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 150px;
+        }
+
+        .platform-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .card-type {
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .card-thumbnail {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            contain: strict;
+            position: relative;
+        }
+
+        .card-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+
+        .placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: var(--text-muted);
+            contain: strict;
+        }
+
+        .video-placeholder {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--accent) 100%);
+        }
+
+        .thumb-loading {
+            animation: pulse 1.5s ease-in-out infinite;
+            will-change: opacity, transform;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        .card-tags {
+            padding: 8px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-height: 0;
+        }
+
+        .tag {
+            background: var(--accent);
+            color: var(--accent-light);
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background-color 0.1s ease-out, color 0.1s ease-out;
+        }
+
+        .tag:hover {
+            background: var(--accent-light);
+            color: var(--bg-dark);
+        }
+
+        .card-caption {
+            padding: 8px 12px 12px;
+            font-size: 0.85rem;
+            color: var(--text);
+            line-height: 1.4;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        /* Loading */
+        .loading-more {
+            text-align: center;
+            padding: 20px;
+            color: var(--accent-light);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--accent);
+            border-top-color: var(--accent-light);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            min-width: 150px;
+        }
+
+        .context-menu.show {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .context-menu-item:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .context-menu-item:last-child {
+            border-radius: 0 0 8px 8px;
+        }
+
+        /* No results */
+        .no-results {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+        }
+
+        .no-results .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        /* Modal (Re-Index) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 30px;
+            min-width: 400px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal h2 {
+            margin-bottom: 15px;
+            color: var(--accent-light);
+        }
+
+        .modal p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .modal .btn {
+            margin: 5px;
+            min-width: 100px;
+        }
+
+        .modal .btn-primary {
+            background: var(--accent-light);
+            color: var(--bg-dark);
+        }
+
+        .modal .btn-secondary {
+            background: var(--accent);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-bar .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-light), var(--success));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-bar .progress-indeterminate {
+            height: 100%;
+            background: var(--accent-light);
+            width: 30%;
+            animation: progress-animation 1.5s ease-in-out infinite;
+        }
+
+        @keyframes progress-animation {
+            0% { margin-left: -30%; }
+            100% { margin-left: 100%; }
+        }
+
+        .status-success { color: #4ade80; }
+        .status-error { color: #f87171; }
+
+        /* Content Translation Toggle */
+        .translate-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-dark);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .translate-toggle:hover {
+            border-color: var(--accent-light);
+        }
+
+        .translate-toggle.active {
+            background: var(--accent-light);
+            color: var(--bg-dark);
+            border-color: var(--accent-light);
+        }
+
+        .translate-toggle .toggle-icon {
+            font-size: 1rem;
+        }
+
+        .translate-toggle .toggle-text {
+            font-size: 0.85rem;
+        }
+
+        .translate-lang-select {
+            background: var(--bg-dark);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .translate-lang-select:hover {
+            border-color: var(--accent-light);
+        }
+
+        .translated-text {
+            color: #a5f3fc;
+            font-style: italic;
+            border-left: 2px solid var(--accent-light);
+            padding-left: 8px;
+            margin-top: 4px;
+        }
+
+        .original-text {
+            opacity: 0.6;
+            font-size: 0.9em;
+        }
+
+        .translating {
+            animation: translatePulse 1s ease-in-out infinite;
+        }
+
+        @keyframes translatePulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .tag.translated {
+            background: linear-gradient(90deg, var(--accent), #2563eb);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           YOUTUBE QUEUE — SELECTION UI
+           ═══════════════════════════════════════════════════════ */
+
+        .select-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(15, 15, 25, 0.5);
+            border: 2px solid rgba(255,255,255,0.75);
+            backdrop-filter: blur(8px) saturate(1.2);
+            -webkit-backdrop-filter: blur(8px) saturate(1.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s,
+                        background 0.2s,
+                        border-color 0.2s,
+                        transform 0.15s,
+                        box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+
+        .media-card:hover .select-toggle {
+            opacity: 1;
+            background: rgba(15, 15, 25, 0.75);
+            border-color: rgba(255,255,255,0.95);
+        }
+
+        .select-toggle:hover {
+            transform: scale(1.12);
+            background: rgba(15, 15, 25, 0.9);
+            border-color: #fff;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+        }
+
+        .select-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .select-toggle svg {
+            width: 16px;
+            height: 16px;
+            stroke: #fff;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.2s,
+                        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .select-toggle:hover svg {
+            opacity: 0.4;
+            transform: scale(0.85);
+        }
+
+        .media-card.selected .select-toggle {
+            background: #ff2d55;
+            border-color: #ff2d55;
+            opacity: 1;
+            box-shadow:
+                0 0 0 2px rgba(255,45,85,0.25),
+                0 4px 16px rgba(255,45,85,0.55);
+        }
+
+        .media-card.selected .select-toggle:hover {
+            background: #ff4568;
+            border-color: #ff4568;
+        }
+
+        .media-card.selected .select-toggle svg {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .media-card.selected .card-thumbnail::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg,
+                        rgba(255,45,85,0.22) 0%,
+                        rgba(255,45,85,0.05) 40%,
+                        transparent 70%);
+            pointer-events: none;
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        body.selection-active .media-card.selectable:not(.selected) {
+            opacity: 0.55;
+        }
+        body.selection-active .media-card.selectable:not(.selected):hover {
+            opacity: 1;
+        }
+
+        .selection-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: linear-gradient(135deg, #1e1e2e 0%, #2a1a2e 100%);
+            border: 1px solid rgba(255,45,85,0.4);
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: none;
+            align-items: center;
+            gap: 24px;
+            box-shadow:
+                0 12px 40px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(255,255,255,0.05) inset;
+            z-index: 500;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            opacity: 0;
+            transition: opacity 0.25s,
+                        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: calc(100vw - 40px);
+        }
+        .selection-bar.visible {
+            display: flex;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .selection-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.95rem;
+        }
+        .selection-count {
+            font-weight: 700;
+            color: #fff;
+            font-size: 1rem;
+            background: #ff2d55;
+            padding: 4px 12px;
+            border-radius: 20px;
+            min-width: 90px;
+            text-align: center;
+        }
+        .selection-hint {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .selection-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .selection-actions .btn {
+            border-radius: 10px;
+            padding: 8px 18px;
+            font-weight: 500;
+        }
+
+        .queue-modal {
+            min-width: 900px;
+            max-width: 1200px;
+            width: 90%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            padding: 0;
+        }
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--accent);
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .queue-header h2 {
+            margin: 0;
+            color: #ff4444;
+            font-size: 1.2rem;
+        }
+        .queue-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .queue-stats {
+            display: flex;
+            gap: 15px;
+            padding: 12px 25px;
+            border-bottom: 1px solid var(--accent);
+            background: rgba(0,0,0,0.2);
+            font-size: 0.85rem;
+        }
+        .queue-stat {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .queue-stat.pending .value { color: #fbbf24; }
+        .queue-stat.uploading .value { color: #3b82f6; }
+        .queue-stat.done .value { color: #10b981; }
+        .queue-stat.failed .value { color: #ef4444; }
+        .queue-stat .value {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+                /* ═══ MANUAL DOWNLOAD MODAL ═══ */
+        .mdl-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--accent);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--bg-card) 100%);
+            border-radius: 12px 12px 0 0;
+        }
+        .mdl-header h2 {
+            font-size: 1.15rem;
+            color: #ff4444;
+            margin: 0;
+        }
+        .mdl-body {
+            padding: 20px 24px;
+            max-height: 65vh;
+            overflow-y: auto;
+        }
+        .mdl-footer {
+            padding: 14px 24px;
+            border-top: 1px solid var(--accent);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.15);
+            border-radius: 0 0 12px 12px;
+        }
+        .mdl-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 4px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+        }
+        .mdl-tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+        .mdl-tab:hover:not(.disabled) {
+            color: var(--text);
+            background: rgba(255,255,255,0.05);
+        }
+        .mdl-tab.active {
+            background: var(--accent-light);
+            color: var(--bg-dark);
+        }
+        .mdl-tab.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .mdl-progress {
+            margin-top: 20px;
+            padding: 14px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            border: 1px solid var(--accent);
+        }
+        .queue-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 25px;
+            min-height: 300px;
+            max-height: 60vh;
+        }
+        .queue-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .queue-item {
+            display: flex;
+            gap: 15px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--accent);
+            transition: all 0.15s;
+            align-items: center;
+        }
+        .queue-item:hover {
+            background: var(--bg-hover);
+        }
+        .queue-item.status-pending { border-left-color: #fbbf24; }
+        .queue-item.status-uploading { border-left-color: #3b82f6; }
+        .queue-item.status-done { border-left-color: #10b981; }
+        .queue-item.status-failed { border-left-color: #ef4444; }
+        .queue-thumb {
+            width: 80px;
+            height: 80px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+        .queue-info {
+            flex: 1;
+            overflow: hidden;
+        }
+        .queue-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .queue-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .queue-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-pending { background: #fbbf24; color: #000; }
+        .badge-uploading { background: #3b82f6; color: #fff; }
+        .badge-done { background: #10b981; color: #fff; }
+        .badge-failed { background: #ef4444; color: #fff; }
+        .queue-error {
+            font-size: 0.75rem;
+            color: #f87171;
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .queue-actions-cell {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .queue-btn-icon {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+        }
+        .queue-btn-icon:hover {
+            background: var(--accent);
+            border-color: var(--accent-light);
+        }
+        .queue-btn-icon.danger:hover {
+            background: #7f1d1d;
+            border-color: #ef4444;
+        }
+        .queue-worker-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: rgba(0,0,0,0.3);
+            font-size: 0.8rem;
+        }
+        .worker-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+        }
+        .worker-dot.running {
+            background: #10b981;
+            animation: pulse-dot 1.5s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+        }
+
+        .edit-modal {
+            min-width: 500px;
+            text-align: left;
+        }
+        .edit-modal label {
+            display: block;
+            margin: 12px 0 4px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .edit-modal input,
+        .edit-modal textarea,
+        .edit-modal select {
+            width: 100%;
+            background: var(--bg-dark);
+            color: var(--text);
+            border: 1px solid var(--accent);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+        }
+        .edit-modal textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .edit-modal input:focus,
+        .edit-modal textarea:focus,
+        .edit-modal select:focus {
+            border-color: var(--accent-light);
+        }
+
+        .queue-btn {
+            position: relative;
+        }
+        .queue-badge-count {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ef4444;
+            color: #fff;
+            border-radius: 10px;
+            padding: 2px 7px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            min-width: 18px;
+            text-align: center;
+        }
+        .queue-badge-count.hidden { display: none; }
+                /* ═══ GROUPS VIEW ═══ */
+        .groups-view {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 900;
+            display: none;
+            flex-direction: column;
+        }
+        .groups-view.visible { display: flex; }
+
+        .groups-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--accent);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--bg-card) 100%);
+        }
+        .groups-header h1 { font-size: 1.3rem; font-weight: 600; }
+        .groups-header-actions { display: flex; gap: 10px; }
+
+        .groups-body { flex: 1; display: flex; overflow: hidden; }
+
+        .groups-sidebar {
+            width: 280px;
+            border-right: 1px solid var(--accent);
+            background: var(--bg-card);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .groups-sidebar-title {
+            padding: 12px 16px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--accent);
+        }
+        .groups-tree { flex: 1; overflow-y: auto; padding: 8px 0; }
+        .groups-empty {
+            padding: 30px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .group-node {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.1s;
+            position: relative;
+        }
+        .group-node:hover { background: var(--bg-hover); }
+        .group-node.active {
+            background: rgba(74,158,255,0.15);
+            border-left: 3px solid var(--accent-light);
+            padding-left: 13px;
+        }
+        .group-toggle {
+            width: 16px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.15s;
+            user-select: none;
+        }
+        .group-toggle.collapsed { transform: rotate(-90deg); }
+        .group-toggle-placeholder { width: 16px; }
+        .group-icon { font-size: 1rem; }
+        .group-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .group-count {
+            background: rgba(255,255,255,0.1);
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .group-node .group-actions { display: none; gap: 4px; }
+        .group-node:hover .group-actions { display: flex; }
+        .group-node .group-action {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+        .group-node .group-action:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text);
+        }
+
+        .groups-main { flex: 1; overflow-y: auto; padding: 24px 32px; }
+        .groups-placeholder {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+        }
+        .groups-placeholder p { margin-top: 16px; }
+
+        .group-detail-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .group-detail-icon {
+            font-size: 2.5rem;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            border-radius: 12px;
+        }
+        .group-detail-title h2 {
+            font-size: 1.4rem;
+            color: var(--accent-light);
+            margin-bottom: 4px;
+        }
+        .group-detail-title .meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .group-action-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-download-new {
+            background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.35);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn-download-new:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34,197,94,0.5);
+        }
+        .btn-download-new:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-download-new .sub {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 400;
+            opacity: 0.85;
+            margin-top: 2px;
+        }
+
+        .group-section-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 24px 0 12px;
+        }
+
+        .member-list { display: flex; flex-direction: column; gap: 8px; }
+        .member-item {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            transition: background 0.15s;
+        }
+        .member-item:hover { background: var(--bg-hover); }
+        .member-info { flex: 1; }
+        .member-name {
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .member-accounts {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-left: 8px;
+        }
+        .account-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+        .account-row .platform-badge {
+            font-size: 0.75rem;
+            padding: 1px 6px;
+            background: var(--accent);
+            border-radius: 3px;
+            color: var(--accent-light);
+        }
+        .account-row .username { color: var(--text); }
+        .account-row .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+        .account-row .status-dot.disabled { background: #666; }
+
+        .member-actions { display: flex; gap: 6px; }
+        .member-actions button {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .member-actions button:hover { background: var(--accent); }
+
+        .run-history { display: flex; flex-direction: column; gap: 6px; }
+        .run-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border-radius: 6px;
+            font-size: 0.82rem;
+            align-items: center;
+        }
+        .run-item .status-icon { font-size: 1rem; }
+        .run-item .run-info { flex: 1; color: var(--text-muted); }
+        .run-item .run-stats { display: flex; gap: 12px; }
+        .run-item .run-stat { color: var(--text); }
+
+        .group-progress {
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            display: none;
+        }
+        .group-progress.visible { display: block; }
+        .group-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .group-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #16a34a, #22c55e);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .group-progress-log {
+            font-family: 'Consolas', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 8px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+                /* ═══ COMBO DROPDOWN ═══ */
+        .combo-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            max-height: 220px;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            z-index: 100;
+            padding: 4px;
+        }
+        .combo-dropdown::-webkit-scrollbar { width: 6px; }
+        .combo-dropdown::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 3px;
+        }
+        .combo-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text);
+            border-radius: 4px;
+            transition: background 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .combo-item:hover {
+            background: var(--bg-hover);
+        }
+        .combo-item .platform-icon-small {
+            font-size: 0.75rem;
+            color: var(--accent-light);
+            font-weight: bold;
+        }
+        .combo-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1 data-i18n="title">⚡ Media Viewer</h1>
+        <div class="header-buttons">
+            <div class="translate-toggle" id="translateToggle" onclick="toggleContentTranslation()" title="Translate captions and tags">
+                <span class="toggle-icon">🌐</span>
+                <span class="toggle-text" data-i18n="translate_content">Translate</span>
+            </div>
+            <select id="translateLangSelect" class="translate-lang-select" onchange="setTranslateLang(this.value)" title="Translation target language">
+                <option value="en">🇺🇸 EN</option>
+                <option value="id">🇮🇩 ID</option>
+                <option value="ja">🇯🇵 JA</option>
+                <option value="ko">🇰🇷 KR</option>
+                <option value="zh">🇨🇳 CN</option>
+                <option value="th">🇹🇭 TH</option>
+                <option value="vi">🇻🇳 VN</option>
+            </select>
+            <select id="langSelector" class="lang-selector" onchange="setLanguage(this.value)">
+                <option value="en">🇺🇸 EN</option>
+                <option value="id">🇮🇩 ID</option>
+                <option value="th">🇹🇭 TH</option>
+                <option value="vi">🇻🇳 VN</option>
+            </select>
+                       <button class="btn" onclick="showReindexModal()" data-i18n="reindex" title="Full reindex (lama, ~30s)">📥 Re-Index</button>
+            <button class="btn" onclick="runIncrementalReindex()" style="background: #16a34a;" title="Tambah file baru saja (cepat, ~1s)">⚡ Quick Scan</button>
+            <button class="btn" onclick="runPruneMissing()" style="background: #b45309;" title="Hapus entry DB yang file-nya sudah tidak ada">🧹 Clean Missing</button>
+            <button class="btn queue-btn" onclick="showQueueModal()" title="YouTube Upload Queue">
+                🎬 Queue
+                <span class="queue-badge-count hidden" id="queueBadgeCount">0</span>
+            </button>
+                        <button class="btn" onclick="showManualDownloadModal()" title="Download by username">
+                📥 Download
+            </button>
+            <button class="btn" onclick="toggleGroupsView()" id="btnGroups" title="Idol Groups">
+                👥 Groups
+            </button>
+            <button class="btn" onclick="refreshData()" data-i18n="refresh">🔄 Refresh</button>
+        </div>
+    </header>
+
+    <!-- Re-Index Modal -->
+    <div class="modal-overlay" id="reindexModal">
+        <div class="modal">
+            <h2 id="modalTitle" data-i18n="modal_title">📥 Re-Index Media</h2>
+            <p id="modalMessage" data-i18n="modal_message">Scan all media folders and update database?</p>
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill"></div>
+            </div>
+            <div id="modalButtons">
+                <button class="btn btn-secondary" onclick="hideReindexModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="startReindex()" data-i18n="start_reindex">🚀 Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Modal -->
+    <div class="modal-overlay" id="queueModal">
+        <div class="modal queue-modal">
+            <div class="queue-header">
+                <h2>🎬 YouTube Upload Queue</h2>
+                <div class="queue-worker-indicator">
+                    <span class="worker-dot" id="workerDot"></span>
+                    <span id="workerStatusText">Worker: stopped</span>
+                </div>
+                <div class="queue-actions">
+                    <select id="queueFilter" onchange="refreshQueue()" style="background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); padding: 6px 10px; border-radius: 4px;">
+                        <option value="all">All</option>
+                        <option value="pending">Pending</option>
+                        <option value="uploading">Uploading</option>
+                        <option value="done">Done</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                    <button class="btn" onclick="startWorker()" id="btnStartWorker" style="background: #16a34a;">▶ Start Worker</button>
+                    <button class="btn" onclick="stopWorker()" id="btnStopWorker" style="background: #7f1d1d;">⏸ Stop</button>
+                    <button class="btn" onclick="retryFailed()" style="background: #b45309;">🔄 Retry Failed</button>
+                    <button class="btn" onclick="clearQueue(true)" style="background: #555;">🗑 Clear Done</button>
+                    <button class="btn" onclick="hideQueueModal()" style="background: #333;">✕</button>
+                </div>
+            </div>
+
+            <div class="queue-stats">
+                <div class="queue-stat pending"><span>Pending:</span><span class="value" id="qStatPending">0</span></div>
+                <div class="queue-stat uploading"><span>Uploading:</span><span class="value" id="qStatUploading">0</span></div>
+                <div class="queue-stat done"><span>Done:</span><span class="value" id="qStatDone">0</span></div>
+                <div class="queue-stat failed"><span>Failed:</span><span class="value" id="qStatFailed">0</span></div>
+                <div class="queue-stat"><span>Total:</span><span class="value" id="qStatTotal">0</span></div>
+            </div>
+
+            <div class="queue-list" id="queueList">
+                <div class="queue-empty">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Queue Item Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal edit-modal">
+            <h2>✏️ Edit Queue Item</h2>
+            <input type="hidden" id="editId">
+            <label>Title (max 100)</label>
+            <input type="text" id="editTitle" maxlength="100">
+            <label>Description</label>
+            <textarea id="editDesc" maxlength="5000"></textarea>
+            <label>Tags (comma separated)</label>
+            <input type="text" id="editTags" placeholder="tag1, tag2, tag3">
+            <label>Privacy</label>
+            <select id="editPrivacy">
+                <option value="private">Private</option>
+                <option value="unlisted">Unlisted</option>
+                <option value="public">Public</option>
+            </select>
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn" onclick="hideEditModal()" style="background: #555;">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditQueueItem()" style="background: #16a34a;">💾 Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+     <!-- Filters (Simplified) -->
+    <div class="filters-v2">
+        <!-- Baris utama -->
+        <div class="filters-row">
+            <div class="filter-search">
+                <span class="filter-search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Cari caption, user, atau tag..."
+                       onkeyup="handleSearch(event)">
+            </div>
+
+            <select id="platformFilter" class="filter-select" onchange="onPlatformChange()">
+                <option value="All">📱 Semua Platform</option>
+                <option value="Instagram">📷 Instagram</option>
+                <option value="Twitter">🐦 Twitter</option>
+                <option value="TikTok">🎵 TikTok</option>
+            </select>
+
+             <select id="groupFilter" class="filter-select"
+                    onchange="applyFilters()"
+                    onmousedown="loadGroupOptions()"
+                    onfocus="loadGroupOptions()">
+                <option value="0" data-i18n="all_group">👥 All Groups</option>
+            </select>
+
+            <select id="accountFilter" class="filter-select" onchange="applyFilters()">
+                <option value="All">👤 Semua Account</option>
+            </select>
+
+            <select id="typeFilter" class="filter-select" onchange="applyFilters()">
+                <option value="All">🎨 Semua Tipe</option>
+                <option value="Image">📸 Foto</option>
+                <option value="Video">🎬 Video</option>
+            </select>
+
+            <select id="sortFilter" class="filter-select" onchange="applyFilters()">
+                <option value="newest">⬇️ Terbaru</option>
+                <option value="oldest">⬆️ Terlama</option>
+            </select>
+
+            <button class="filter-btn filter-btn-more" id="btnMoreFilters" onclick="toggleMoreFilters()">
+                ⚙️ <span>More</span>
+            </button>
+
+            <button class="filter-btn filter-btn-reset" onclick="resetFilters()" title="Reset semua filter">
+                ↺
+            </button>
+        </div>
+
+        <!-- Panel advanced (hidden by default) -->
+        <div class="filters-advanced" id="advancedFilters" style="display: none;">
+            <div class="filter-group-inline">
+                <label>Tahun</label>
+                <select id="yearFilter" class="filter-select" onchange="onYearChange()">
+                    <option value="All">Semua</option>
+                </select>
+            </div>
+            <div class="filter-group-inline">
+                <label>Bulan</label>
+                <select id="monthFilter" class="filter-select" onchange="onMonthChange()">
+                    <option value="All">Semua</option>
+                </select>
+            </div>
+            <div class="filter-group-inline">
+                <label>Hari</label>
+                <select id="dayFilter" class="filter-select" onchange="applyFilters()">
+                    <option value="All">Semua</option>
+                </select>
+            </div>
+            <div class="filter-group-inline">
+                <label>Tag</label>
+                <select id="tagFilter" class="filter-select" onchange="onTagFilterChange()">
+                    <option value="">Semua Tag</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Active filter chips -->
+        <div class="filter-chips" id="filterChips" style="display: none;">
+            <span class="filter-chips-label">Filter aktif:</span>
+            <div class="filter-chips-list" id="filterChipsList"></div>
+            <button class="filter-chips-clear" onclick="resetFilters()">🗑 Clear All</button>
+        </div>
+
+        <!-- Status bar -->
+        <div class="filters-status">
+            <div class="stats-info">
+                <span class="stat-item" id="totalStat">📊 <span id="totalCount">0</span></span>
+                <span class="stat-item" id="imagesStat">📸 <span id="imagesCount">0</span></span>
+                <span class="stat-item" id="videosStat">🎬 <span id="videosCount">0</span></span>
+            </div>
+            <span class="loading-indicator" id="loadingIndicator"></span>
+        </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid-container" id="gridContainer">
+        <div class="media-grid" id="mediaGrid"></div>
+        <div class="loading-more" id="loadingMore" style="display: none;">
+            <div class="spinner"></div>
+            <span data-i18n="loading_more">Loading more...</span>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="openCurrentMedia()" data-i18n="ctx_open">📂 Open</div>
+        <div class="context-menu-item" onclick="openCurrentFolder()" data-i18n="ctx_open_folder">📁 Open Folder</div>
+        <div class="context-menu-item" onclick="copyPath()" data-i18n="ctx_copy_path">📋 Copy Path</div>
+    </div>
+        <!-- Groups Full-Screen View -->
+    <div id="groupsView" class="groups-view">
+        <div class="groups-header">
+            <h1>👥 Idol Groups</h1>
+            <div class="groups-header-actions">
+                <button class="btn" onclick="showCreateGroupModal(null)" style="background: #16a34a;">
+                    + New Group
+                </button>
+                <button class="btn" onclick="toggleGroupsView()" style="background: #333;">✕ Close</button>
+            </div>
+        </div>
+
+        <div class="groups-body">
+            <aside class="groups-sidebar" id="groupsSidebar">
+                <div class="groups-sidebar-title">TREE</div>
+                <div class="groups-tree" id="groupsTree">
+                    <div class="groups-empty">Belum ada group. Klik "+ New Group".</div>
+                </div>
+            </aside>
+
+            <main class="groups-main" id="groupsMain">
+                <div class="groups-placeholder">
+                    <div style="font-size: 4rem;">👥</div>
+                    <p>Pilih group di sidebar untuk melihat detail</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Create/Edit Group Modal -->
+    <div class="modal-overlay" id="groupEditModal">
+        <div class="modal" style="min-width: 420px; text-align: left;">
+            <h2 id="groupEditTitle">➕ New Group</h2>
+            <input type="hidden" id="groupEditId">
+            <input type="hidden" id="groupEditParentId">
+
+            <label style="display:block; margin: 12px 0 4px; font-size: 0.85rem; color: #888;">Nama</label>
+            <input type="text" id="groupEditName" placeholder="Karen Na Ivory"
+                   style="width:100%; padding:8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+
+            <label style="display:block; margin: 12px 0 4px; font-size: 0.85rem; color: #888;">Icon (emoji)</label>
+            <input type="text" id="groupEditIcon" placeholder="👥" maxlength="4"
+                   style="width:100%; padding:8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+
+            <label style="display:block; margin: 12px 0 4px; font-size: 0.85rem; color: #888;">Warna</label>
+            <input type="color" id="groupEditColor" value="#4a9eff"
+                   style="width:100%; height: 36px; background: var(--bg-dark); border: 1px solid var(--accent); border-radius: 4px;">
+
+            <div id="groupEditParentInfo" style="margin-top: 8px; font-size: 0.8rem; color: #888;"></div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn" onclick="hideGroupEditModal()" style="background: #555;">Cancel</button>
+                <button class="btn btn-primary" onclick="saveGroupEdit()" style="background: #16a34a;">💾 Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Account Modal -->
+    <div class="modal-overlay" id="accountEditModal">
+        <div class="modal" style="min-width: 420px; text-align: left;">
+            <h2 id="accountEditTitle">➕ Add Account</h2>
+            <input type="hidden" id="accountEditId">
+            <input type="hidden" id="accountEditGroupId">
+
+            <label style="display:block; margin: 12px 0 4px; font-size: 0.85rem; color: #888;">Platform</label>
+            <select id="accountEditPlatform" onchange="onAccountPlatformChange(this.value)" ...>
+                    style="width:100%; padding:8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+                <option value="instagram">📷 Instagram</option>
+                <option value="tiktok">🎵 TikTok</option>
+                <option value="twitter">𝕏 Twitter (soon)</option>
+            </select>
+
+            <label style="display:block; margin: 12px 0 4px; font-size: 0.85rem; color: #888;">
+    Username (tanpa @)
+    <span style="float:right; color:#4a9eff; font-size:0.72rem; font-weight:normal;">
+        <span id="accountExistingCount">0</span> existing
+    </span>
+</label>
+<div class="combo-wrapper" style="position:relative;">
+    <input type="text" id="accountEditUsername" placeholder="Ketik atau pilih dari list..."
+           autocomplete="off"
+           style="width:100%; padding:8px 32px 8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+    <button type="button" id="accountDropdownBtn"
+            style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:#888; cursor:pointer; padding:4px 8px; font-size:0.85rem;"
+            title="Lihat semua username existing">▼</button>
+    <div id="accountDropdownList" class="combo-dropdown" style="display:none;">
+        <div class="combo-empty" id="accountDropdownEmpty">Tidak ada existing account</div>
+    </div>
+</div>
+
+            <label style="display:flex; align-items:center; gap:8px; margin-top: 12px;">
+                <input type="checkbox" id="accountEditEnabled" checked>
+                <span style="font-size: 0.9rem;">Aktif</span>
+            </label>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn" onclick="hideAccountEditModal()" style="background: #555;">Cancel</button>
+                <button class="btn btn-primary" onclick="saveAccountEdit()" style="background: #16a34a;">💾 Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download New Posts Modal -->
+    <div class="modal-overlay" id="downloadGroupModal">
+        <div class="modal" style="min-width: 460px; text-align: left;">
+            <h2 id="downloadGroupTitle">📥 Download New Posts</h2>
+            <input type="hidden" id="downloadGroupId">
+
+            <p style="color: #888; font-size: 0.85rem; margin: 8px 0 16px;">
+                Cek semua member & platform. Hanya download post yang belum ada.
+            </p>
+
+            <label style="display:block; margin: 12px 0 6px; font-size: 0.85rem; color: #888;">Platform</label>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <label style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="dlPlatformIG" checked>
+                    <span>📷 Instagram</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="dlPlatformTT" checked>
+                    <span>🎵 TikTok</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; opacity: 0.5;">
+                    <input type="checkbox" id="dlPlatformX" disabled>
+                    <span>𝕏 Twitter (soon)</span>
+                </label>
+            </div>
+
+            <label style="display:block; margin: 16px 0 6px; font-size: 0.85rem; color: #888;">Delay antar akun (detik)</label>
+            <input type="number" id="dlGroupDelay" value="1" min="0" max="10" step="0.5"
+                   style="width: 100px; padding:6px 10px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px;">
+
+            <div id="downloadGroupInfo" style="margin-top: 16px; padding: 10px 12px; background: var(--bg-dark); border-radius: 6px; font-size: 0.85rem; color: #aaa;"></div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn" onclick="hideDownloadGroupModal()" style="background: #555;">Cancel</button>
+                <button class="btn btn-primary" onclick="startGroupDownload()" id="btnStartGroupDownload" style="background: #16a34a;">
+                    🚀 Start
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Manual Download Modal -->
+    <div class="modal-overlay" id="manualDownloadModal">
+        <div class="modal" style="min-width: 560px; max-width: 640px; text-align: left; padding: 0;">
+            <div class="mdl-header">
+                <h2>📥 Download by Username</h2>
+                <button class="btn" onclick="hideManualDownloadModal()" style="background: #333; padding: 6px 12px;">✕</button>
+            </div>
+
+            <div class="mdl-body">
+                <!-- Platform tabs -->
+                <label style="display:block; margin-bottom: 6px; font-size: 0.85rem; color: #888;">Platform</label>
+                <div class="mdl-tabs" id="mdlTabs">
+                    <button class="mdl-tab active" data-platform="instagram" onclick="switchMdlTab('instagram')">
+                        📷 Instagram
+                    </button>
+                    <button class="mdl-tab" data-platform="tiktok" onclick="switchMdlTab('tiktok')">
+                        🎵 TikTok
+                    </button>
+                    <button class="mdl-tab" data-platform="facebook" onclick="switchMdlTab('facebook')">
+    📘 Facebook
+</button>
+                    <button class="mdl-tab disabled" data-platform="twitter" onclick="switchMdlTab('twitter')" disabled title="Belum tersedia">
+                        𝕏 Twitter <span style="font-size: 0.7rem;">(soon)</span>
+                    </button>
+                </div>
+                
+
+                <!-- Usernames input -->
+                <label style="display:block; margin: 16px 0 6px; font-size: 0.85rem; color: #888;">
+                    Usernames (satu per baris, tanpa @)
+                    <span style="float:right; color:#4a9eff; font-size:0.75rem; font-weight:normal;">
+                        <span id="mdlUserCount">0</span> user
+                    </span>
+                </label>
+                <textarea id="mdlUsernames" rows="6"
+                          placeholder="kareai_rio&#10;momoko_hashimoto&#10;saara_hazuki"
+                          style="width:100%; padding:10px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 6px; font-size: 0.9rem; font-family: 'Consolas', monospace; resize: vertical; min-height: 120px;"></textarea>
+
+                <!-- Quick actions -->
+                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                    <button class="btn" onclick="mdlPasteFromClipboard()" style="background:#37474F; padding:6px 14px; font-size:0.8rem;">📋 Paste</button>
+                    <button class="btn" onclick="mdlLoadExisting()" style="background:#37474F; padding:6px 14px; font-size:0.8rem;">📚 Load Existing</button>
+                    <button class="btn" onclick="document.getElementById('mdlUsernames').value=''; updateMdlUserCount();" style="background:#37474F; padding:6px 14px; font-size:0.8rem;">🗑 Clear</button>
+                </div>
+
+                <!-- Options grid -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px;">
+                    <div>
+                        <label style="display:block; margin-bottom: 6px; font-size: 0.85rem; color: #888;">Quality</label>
+                        <select id="mdlQuality" style="width:100%; padding:8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+                            <option value="hd">HD (1080p, no watermark)</option>
+                            <option value="sd">SD (720p)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 6px; font-size: 0.85rem; color: #888;">Delay antar user (s)</label>
+                        <input type="number" id="mdlDelay" value="2.0" min="0.5" max="60" step="0.5"
+                               style="width:100%; padding:8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 6px; font-size: 0.85rem; color: #888;">Workers</label>
+                        <input type="number" id="mdlWorkers" value="1" min="1" max="4" step="1"
+                               style="width:100%; padding:8px 12px; background: var(--bg-dark); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; font-size: 0.9rem;">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem;">
+                            <input type="checkbox" id="mdlUseArchive" checked>
+                            Skip duplikat
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Warning hint -->
+                <!-- Warning hint -->
+                <div id="mdlWarning" style="margin-top:14px; padding:10px 14px; background: rgba(255,193,7,0.08); border-left: 3px solid #fbbf24; border-radius: 4px; font-size:0.78rem; color: #ccc;">
+                    ⚠️ <b>Instagram:</b> hindari download &gt;3 akun per run untuk menghindari rate limit / challenge.
+                </div>
+
+                <!-- Progress (hidden by default) -->
+                <div class="mdl-progress" id="mdlProgress" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                        <span id="mdlProgressLabel" style="font-size:0.85rem; color: var(--text-muted);">Processing...</span>
+                        <span id="mdlProgressPercent" style="font-size:0.85rem; color: var(--accent-light);">0%</span>
+                    </div>
+                    <div class="group-progress-bar"><div class="group-progress-fill" id="mdlProgressFill"></div></div>
+                    <div class="group-progress-log" id="mdlProgressLog" style="max-height: 180px;"></div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mdl-footer">
+                <div id="mdlFooterStatus" style="font-size: 0.8rem; color: var(--text-muted);"></div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" onclick="hideManualDownloadModal()" id="mdlCancelBtn" style="background: #555;">Cancel</button>
+                    <button class="btn" onclick="stopManualDownload()" id="mdlStopBtn" style="background: #7f1d1d; display:none;">⏸ Stop</button>
+                    <button class="btn btn-primary" onclick="startManualDownload()" id="mdlStartBtn" style="background: #16a34a;">🚀 Start Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Selection Bar -->
+    <!-- Selection Bar -->
+    <div class="selection-bar" id="selectionBar">
+        <div class="selection-info">
+            <span class="selection-count" id="selectionCount">0 selected</span>
+            <span class="selection-hint">Kirim ke YouTube Upload Queue</span>
+        </div>
+        <div class="selection-actions">
+            <button class="btn" onclick="clearSelection()" style="background: #555;">✕ Clear</button>
+            <button class="btn" onclick="addSelectionToQueue()" style="background: #ff2d55;" id="btnAddToQueue">
+                📤 Add to Queue
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== TRANSLATIONS ====================
+        const translations = {
+            en: {
+                title: '⚡ Media Viewer', reindex: '📥 Re-Index', refresh: '🔄 Refresh',
+                modal_title: '📥 Re-Index Media', modal_message: 'Scan all media folders and update database?',
+                modal_message_sub: 'This will scan Instagram, Twitter, and TikTok folders for new media.',
+                cancel: 'Cancel', start_reindex: '🚀 Start Re-Index', search_placeholder: 'Search...',
+                platform: 'Platform:', type: 'Type:', account: 'Account:',
+                year: '📅 Year:', month: '📆 Month:', day: '📅 Day:', tag: '🏷️ Tag:', sort: '📅 Sort:',
+                newest: 'Newest', oldest: 'Oldest', all: 'All', all_tags: 'All Tags',
+                image: 'Image', video: 'Video', reset: 'Reset',
+                total: '📊 Total', images: '📸 Images', videos: '🎬 Videos',
+                loading: '⏳ Loading...', loading_more: 'Loading more...',
+                ctx_open: '📂 Open', ctx_open_folder: '📁 Open Folder', ctx_copy_path: '📋 Copy Path',
+                reindex_complete: '✅ Re-index complete!', reindex_error: '❌ Error:',
+                found_items: 'Found {count} items', scanning: '🔍 Scanning...',
+                indexing: '📦 Indexing...', processing: 'Processing {current}/{total}',
+                eta: 'ETA: {time}', speed: '{speed} items/sec', close: 'Close',
+                translate_content: 'Translate', translating: 'Translating...',
+                translation_on: 'Translation ON', translation_off: 'Translation OFF'
+            },
+            id: {
+                title: '⚡ Penampil Media', reindex: '📥 Re-Index', refresh: '🔄 Segarkan',
+                modal_title: '📥 Re-Index Media', modal_message: 'Pindai semua folder media dan perbarui database?',
+                modal_message_sub: 'Ini akan memindai folder Instagram, Twitter, dan TikTok untuk media baru.',
+                cancel: 'Batal', start_reindex: '🚀 Mulai Re-Index', search_placeholder: 'Cari...',
+                platform: 'Platform:', type: 'Tipe:', account: 'Akun:',
+                year: '📅 Tahun:', month: '📆 Bulan:', day: '📅 Tanggal:', tag: '🏷️ Tag:', sort: '📅 Urut:',
+                newest: 'Terbaru', oldest: 'Terlama', all: 'Semua', all_tags: 'Semua Tag',
+                image: 'Gambar', video: 'Video', reset: 'Reset',
+                total: '📊 Total', images: '📸 Gambar', videos: '🎬 Video',
+                loading: '⏳ Memuat...', loading_more: 'Memuat lebih banyak...',
+                ctx_open: '📂 Buka', ctx_open_folder: '📁 Buka Folder', ctx_copy_path: '📋 Salin Path',
+                reindex_complete: '✅ Re-index selesai!', reindex_error: '❌ Error:',
+                found_items: 'Ditemukan {count} item', scanning: '🔍 Memindai...',
+                indexing: '📦 Mengindex...', processing: 'Memproses {current}/{total}',
+                eta: 'Estimasi: {time}', speed: '{speed} item/detik', close: 'Tutup',
+                translate_content: 'Terjemahkan', translating: 'Menerjemahkan...',
+                translation_on: 'Terjemahan AKTIF', translation_off: 'Terjemahan MATI'
+            },
+            th: {
+                title: '⚡ เครื่องดูสื่อ', reindex: '📥 สแกนใหม่', refresh: '🔄 รีเฟรช',
+                modal_title: '📥 สแกนสื่อใหม่', modal_message: 'สแกนโฟลเดอร์สื่อทั้งหมดและอัพเดทฐานข้อมูล?',
+                modal_message_sub: 'จะสแกนโฟลเดอร์ Instagram, Twitter และ TikTok เพื่อหาสื่อใหม่',
+                cancel: 'ยกเลิก', start_reindex: '🚀 เริ่มสแกน', search_placeholder: 'ค้นหา...',
+                platform: 'แพลตฟอร์ม:', type: 'ประเภท:', account: 'บัญชี:',
+                year: '📅 ปี:', month: '📆 เดือน:', day: '📅 วัน:', tag: '🏷️ แท็ก:', sort: '📅 เรียง:',
+                newest: 'ใหม่สุด', oldest: 'เก่าสุด', all: 'ทั้งหมด', all_tags: 'แท็กทั้งหมด',
+                image: 'รูปภาพ', video: 'วิดีโอ', reset: 'รีเซ็ต',
+                total: '📊 ทั้งหมด', images: '📸 รูปภาพ', videos: '🎬 วิดีโอ',
+                loading: '⏳ กำลังโหลด...', loading_more: 'กำลังโหลดเพิ่ม...',
+                ctx_open: '📂 เปิด', ctx_open_folder: '📁 เปิดโฟลเดอร์', ctx_copy_path: '📋 คัดลอกเส้นทาง',
+                reindex_complete: '✅ สแกนเสร็จสิ้น!', reindex_error: '❌ ข้อผิดพลาด:',
+                found_items: 'พบ {count} รายการ', scanning: '🔍 กำลังสแกน...',
+                indexing: '📦 กำลังจัดทำดัชนี...', processing: 'กำลังประมวลผล {current}/{total}',
+                eta: 'เวลาที่เหลือ: {time}', speed: '{speed} รายการ/วินาที', close: 'ปิด',
+                translate_content: 'แปลภาษา', translating: 'กำลังแปล...',
+                translation_on: 'การแปล เปิด', translation_off: 'การแปล ปิด'
+            },
+            vi: {
+                title: '⚡ Trình Xem Media', reindex: '📥 Quét Lại', refresh: '🔄 Làm Mới',
+                modal_title: '📥 Quét Lại Media', modal_message: 'Quét tất cả thư mục media và cập nhật cơ sở dữ liệu?',
+                modal_message_sub: 'Thao tác này sẽ quét thư mục Instagram, Twitter và TikTok để tìm media mới.',
+                cancel: 'Hủy', start_reindex: '🚀 Bắt Đầu Quét', search_placeholder: 'Tìm kiếm...',
+                platform: 'Nền tảng:', type: 'Loại:', account: 'Tài khoản:',
+                year: '📅 Năm:', month: '📆 Tháng:', day: '📅 Ngày:', tag: '🏷️ Thẻ:', sort: '📅 Sắp xếp:',
+                newest: 'Mới nhất', oldest: 'Cũ nhất', all: 'Tất cả', all_tags: 'Tất cả thẻ',
+                image: 'Hình ảnh', video: 'Video', reset: 'Đặt lại',
+                total: '📊 Tổng', images: '📸 Hình ảnh', videos: '🎬 Video',
+                loading: '⏳ Đang tải...', loading_more: 'Đang tải thêm...',
+                ctx_open: '📂 Mở', ctx_open_folder: '📁 Mở Thư Mục', ctx_copy_path: '📋 Sao Chép Đường Dẫn',
+                reindex_complete: '✅ Quét lại hoàn tất!', reindex_error: '❌ Lỗi:',
+                found_items: 'Tìm thấy {count} mục', scanning: '🔍 Đang quét...',
+                indexing: '📦 Đang lập chỉ mục...', processing: 'Đang xử lý {current}/{total}',
+                eta: 'Thời gian còn lại: {time}', speed: '{speed} mục/giây', close: 'Đóng',
+                translate_content: 'Dịch', translating: 'Đang dịch...',
+                translation_on: 'Bật dịch', translation_off: 'Tắt dịch'
+            }
+        };
+
+        let currentLang = localStorage.getItem('mediaViewerLang') || 'en';
+
+        function t(key, params = {}) {
+            let text = translations[currentLang][key] || translations['en'][key] || key;
+            Object.keys(params).forEach(k => { text = text.replace(`{${k}}`, params[k]); });
+            return text;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.getAttribute('data-i18n'));
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+            });
+            document.title = t('title').replace('⚡ ', '');
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('mediaViewerLang', lang);
+            applyTranslations();
+            updateFilterOptions();
+        }
+
+        function updateFilterOptions() {
+            const s = (sel, txt) => { const el = document.querySelector(sel); if (el) el.textContent = txt; };
+            s('#platformFilter option[value="All"]', t('all'));
+            s('#typeFilter option[value="All"]', t('all'));
+            s('#typeFilter option[value="Image"]', t('image'));
+            s('#typeFilter option[value="Video"]', t('video'));
+            s('#accountFilter option[value="All"]', t('all'));
+            s('#yearFilter option[value="All"]', t('all'));
+            s('#monthFilter option[value="All"]', t('all'));
+            s('#dayFilter option[value="All"]', t('all'));
+            s('#tagFilter option[value=""]', t('all_tags'));
+            loadMonths();
+        }
+
+        // ==================== STATE ====================
+        let mediaData = [];
+        let currentPage = 0;
+        let totalItems = 0;
+        let isLoading = false;
+        let allLoaded = false;
+        let currentMedia = null;
+        let selectedTag = '';
+        const ITEMS_PER_PAGE = 30;
+
+        // ==================== TRANSLATION (content) ====================
+        let contentTranslateEnabled = localStorage.getItem('contentTranslateEnabled') === 'true';
+        let translateTargetLang = localStorage.getItem('translateTargetLang') || 'en';
+        let translationCache = {};
+        let translationObserver = null;
+
+        function toggleContentTranslation() {
+            contentTranslateEnabled = !contentTranslateEnabled;
+            localStorage.setItem('contentTranslateEnabled', contentTranslateEnabled);
+            updateTranslateToggleUI();
+            if (contentTranslateEnabled) {
+                setupTranslationObserver();
+                translateVisibleCards();
+            } else {
+                if (translationObserver) { translationObserver.disconnect(); translationObserver = null; }
+                renderGrid();
+            }
+        }
+
+        function updateTranslateToggleUI() {
+            const toggle = document.getElementById('translateToggle');
+            if (contentTranslateEnabled) {
+                toggle.classList.add('active');
+                toggle.querySelector('.toggle-text').textContent = t('translation_on');
+            } else {
+                toggle.classList.remove('active');
+                toggle.querySelector('.toggle-text').textContent = t('translate_content');
+            }
+        }
+
+        function setTranslateLang(lang) {
+            translateTargetLang = lang;
+            localStorage.setItem('translateTargetLang', lang);
+            translationCache = {};
+            if (contentTranslateEnabled) {
+                resetTranslatedCards();
+                translateVisibleCards();
+            }
+        }
+
+        function setupTranslationObserver() {
+            if (translationObserver) translationObserver.disconnect();
+            translationObserver = new IntersectionObserver((entries) => {
+                requestAnimationFrame(() => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && contentTranslateEnabled) {
+                            const card = entry.target;
+                            if (!card.dataset.translated) translateCard(card);
+                        }
+                    });
+                });
+            }, { root: document.getElementById('gridContainer'), rootMargin: '150px', threshold: 0 });
+            document.querySelectorAll('.media-card').forEach(card => translationObserver.observe(card));
+        }
+
+        function translateVisibleCards() {
+            if (!contentTranslateEnabled) return;
+            const container = document.getElementById('gridContainer');
+            const containerRect = container.getBoundingClientRect();
+            document.querySelectorAll('.media-card').forEach(card => {
+                const cardRect = card.getBoundingClientRect();
+                const isVisible = cardRect.bottom >= containerRect.top - 100 && cardRect.top <= containerRect.bottom + 100;
+                if (isVisible && !card.dataset.translated) translateCard(card);
+            });
+        }
+
+        function resetTranslatedCards() {
+            document.querySelectorAll('.media-card[data-translated]').forEach(card => {
+                delete card.dataset.translated;
+                const idx = parseInt(card.dataset.idx);
+                const media = mediaData[idx];
+                if (media) {
+                    const captionEl = card.querySelector('.card-caption');
+                    if (captionEl && media.caption) captionEl.textContent = media.caption;
+                    const tagEls = card.querySelectorAll('.tag');
+                    const tags = media.tags || [];
+                    tagEls.forEach((tagEl, i) => {
+                        if (tags[i]) {
+                            tagEl.textContent = '#' + tags[i];
+                            tagEl.classList.remove('translated');
+                            tagEl.title = '';
+                        }
+                    });
+                }
+            });
+        }
+
+        async function translateCard(card) {
+            if (card.dataset.translated) return;
+            card.dataset.translated = 'pending';
+            const idx = parseInt(card.dataset.idx);
+            const media = mediaData[idx];
+            if (!media) return;
+            const captionEl = card.querySelector('.card-caption');
+            if (captionEl && media.caption) await translateElement(captionEl, media.caption);
+            const tagEls = card.querySelectorAll('.tag');
+            const tags = media.tags || [];
+            for (let i = 0; i < Math.min(tagEls.length, 5); i++) {
+                const tagEl = tagEls[i];
+                const originalTag = tags[i];
+                if (originalTag) await translateTag(tagEl, originalTag);
+            }
+            card.dataset.translated = 'done';
+        }
+
+        async function translateElement(element, originalText) {
+            if (!originalText || originalText.trim() === '') return;
+            const cacheKey = `${translateTargetLang}:${originalText}`;
+            if (translationCache[cacheKey]) {
+                showTranslatedContent(element, originalText, translationCache[cacheKey]);
+                return;
+            }
+            element.classList.add('translating');
+            try {
+                const translated = await window.go.main.App.TranslateText(originalText, translateTargetLang);
+                translationCache[cacheKey] = translated;
+                if (translated && translated !== originalText) {
+                    showTranslatedContent(element, originalText, translated);
+                } else {
+                    element.classList.remove('translating');
+                }
+            } catch (e) {
+                console.log('Translation error:', e);
+                element.classList.remove('translating');
+            }
+        }
+
+        function showTranslatedContent(element, original, translated) {
+            element.classList.remove('translating');
+            element.innerHTML = `
+                <div class="translated-text">${escapeHtml(translated)}</div>
+                <div class="original-text">${escapeHtml(original)}</div>
+            `;
+        }
+
+        async function translateTag(tagEl, originalTag) {
+            if (!originalTag || originalTag.trim() === '') return;
+            const cacheKey = `tag:${translateTargetLang}:${originalTag}`;
+            if (translationCache[cacheKey]) {
+                tagEl.innerHTML = `#${escapeHtml(translationCache[cacheKey])}`;
+                tagEl.classList.add('translated');
+                tagEl.title = `Original: #${originalTag}`;
+                return;
+            }
+            try {
+                const translated = await window.go.main.App.TranslateText(originalTag, translateTargetLang);
+                translationCache[cacheKey] = translated;
+                if (translated && translated !== originalTag) {
+                    tagEl.innerHTML = `#${escapeHtml(translated)}`;
+                    tagEl.classList.add('translated');
+                    tagEl.title = `Original: #${originalTag}`;
+                }
+            } catch (e) {
+                console.log('Tag translation error:', e);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== INIT ====================
+                document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('langSelector').value = currentLang;
+            applyTranslations();
+            document.getElementById('translateLangSelect').value = translateTargetLang;
+            updateTranslateToggleUI();
+            await loadYears();
+            await loadMonths();
+            await loadDays();
+            await loadTags();
+            await loadAccounts();
+            await loadGroupOptions();          // ← TAMBAH
+            await loadData();
+            setupInfiniteScroll();
+            setupContextMenu();
+            setupTagClickHandler();
+            setTimeout(updateFilterChips, 300);  // ← TAMBAH
+        });
+        async function loadYears() {
+            const years = await window.go.main.App.GetYears();
+            const select = document.getElementById('yearFilter');
+            select.innerHTML = years.map(y => `<option value="${y}">${y === 'All' ? t('all') : y}</option>`).join('');
+        }
+
+        const monthNames = {
+            en: ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+            id: ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
+            th: ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'],
+            vi: ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']
+        };
+
+        function getMonthName(monthNum) {
+            const num = parseInt(monthNum, 10);
+            const names = monthNames[currentLang] || monthNames['en'];
+            return names[num] || monthNum;
+        }
+
+        async function loadMonths() {
+            const year = document.getElementById('yearFilter').value;
+            const months = await window.go.main.App.GetMonths(year);
+            const select = document.getElementById('monthFilter');
+            select.innerHTML = months.map(m => {
+                if (m === 'All') return `<option value="All">${t('all')}</option>`;
+                return `<option value="${m}">${getMonthName(m)} (${m})</option>`;
+            }).join('');
+        }
+
+        async function loadDays() {
+            const year = document.getElementById('yearFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            const days = await window.go.main.App.GetDays(year, month);
+            const select = document.getElementById('dayFilter');
+            select.innerHTML = days.map(d => {
+                if (d === 'All') return `<option value="All">${t('all')}</option>`;
+                return `<option value="${d}">${parseInt(d, 10)}</option>`;
+            }).join('');
+        }
+
+        async function loadTags() {
+            const tags = await window.go.main.App.GetPopularTags(200);
+            const select = document.getElementById('tagFilter');
+            select.innerHTML = `<option value="">${t('all_tags')}</option>` +
+                tags.map(tag => `<option value="${tag.name}">#${tag.name} (${tag.count})</option>`).join('');
+        }
+
+        async function loadAccounts() {
+            const platform = document.getElementById('platformFilter').value;
+            const accounts = await window.go.main.App.GetAccounts(platform);
+            const select = document.getElementById('accountFilter');
+            const platformPrefix = {
+                'Instagram': '📷',
+                'Twitter': '🐦',
+                'TikTok': '🎵'
+            };
+            select.innerHTML = '<option value="All">👤 Semua Account</option>' +
+                accounts.filter(a => a.account !== 'All').map(a => {
+                    const value = `${a.platform}|${a.account}`;
+                    const prefix = platformPrefix[a.platform] || '👤';
+                    return `<option value="${value}">${prefix} ${a.account}</option>`;
+                }).join('');
+        }
+
+        async function loadData() {
+            if (isLoading) return;
+            isLoading = true;
+            const startTime = performance.now();
+            document.getElementById('loadingIndicator').textContent = t('loading');
+            const platform = document.getElementById('platformFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            const account = document.getElementById('accountFilter').value;
+            const year = document.getElementById('yearFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            const day = document.getElementById('dayFilter').value;
+            const dropdownTag = document.getElementById('tagFilter').value;
+            const tag = selectedTag || dropdownTag;
+            const search = document.getElementById('searchInput').value;
+            const sortOrder = document.getElementById('sortFilter').value;
+            const groupID = parseInt(document.getElementById('groupFilter').value) || 0;
+
+            try {
+                const result = await window.go.main.App.GetMedia(
+                    platform, type, account, year, month, day, tag, search, sortOrder,
+                    groupID, currentPage, ITEMS_PER_PAGE
+                );
+                totalItems = result.total;
+                document.getElementById('totalCount').textContent = result.stats.total.toLocaleString();
+                document.getElementById('imagesCount').textContent = result.stats.images.toLocaleString();
+                document.getElementById('videosCount').textContent = result.stats.videos.toLocaleString();
+                if (currentPage === 0) {
+                    mediaData = result.media;
+                    renderGrid();
+                } else {
+                    mediaData = [...mediaData, ...result.media];
+                    appendToGrid(result.media);
+                }
+                if (result.media.length < ITEMS_PER_PAGE) allLoaded = true;
+                const elapsed = performance.now() - startTime;
+                document.getElementById('loadingIndicator').textContent = `⚡ ${elapsed.toFixed(0)}ms | ${mediaData.length}/${totalItems}`;
+            } catch (error) {
+                console.error('Load error:', error);
+                document.getElementById('loadingIndicator').textContent = '❌ Error loading';
+            }
+            isLoading = false;
+            document.getElementById('loadingMore').style.display = 'none';
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('mediaGrid');
+            if (mediaData.length === 0) {
+                grid.innerHTML = `<div class="no-results"><div class="icon">📭</div><p>No media found</p></div>`;
+                return;
+            }
+            requestAnimationFrame(() => {
+                grid.innerHTML = mediaData.map((media, idx) => createCard(media, idx)).join('');
+                requestAnimationFrame(() => {
+                    loadVisibleImages();
+                    if (contentTranslateEnabled) {
+                        setupTranslationObserver();
+                        translateVisibleCards();
+                    }
+                    updateSelectionUI();
+                });
+            });
+        }
+
+        function appendToGrid(newMedia) {
+            const grid = document.getElementById('mediaGrid');
+            const startIdx = mediaData.length - newMedia.length;
+            requestAnimationFrame(() => {
+                const html = newMedia.map((media, idx) => createCard(media, startIdx + idx)).join('');
+                grid.insertAdjacentHTML('beforeend', html);
+                requestAnimationFrame(() => {
+                    loadVisibleImages();
+                    if (contentTranslateEnabled && translationObserver) {
+                        const allCards = document.querySelectorAll('.media-card');
+                        for (let i = startIdx; i < allCards.length; i++) {
+                            translationObserver.observe(allCards[i]);
+                        }
+                        translateVisibleCards();
+                    }
+                    updateSelectionUI();
+                });
+            });
+        }
+
+        function createCard(media, idx) {
+            const icons = {
+                Instagram: '<img src="icons/ig.png" class="platform-icon" alt="IG">',
+                Twitter: '<img src="icons/x.png" class="platform-icon" alt="X">',
+                TikTok: '<img src="icons/tiktok.webp" class="platform-icon" alt="TikTok">'
+            };
+            const typeIcon = media.type === 'video' ? '🎬' : '📸';
+            const tags = (media.tags || []).map(t => {
+                const jsonTag = JSON.stringify(t);
+                const htmlSafeTag = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="tag" onclick='handleTagClick(event, ${jsonTag})'>#${htmlSafeTag}</span>`;
+            }).join('');
+
+            // Video pakai thumbnail, foto pakai file asli
+            let imageSrc = '';
+            let showPlaceholder = false;
+            if (media.type === 'video') {
+                if (media.thumbnail) imageSrc = media.thumbnail;
+                else showPlaceholder = true;
+            } else {
+                imageSrc = media.full_path;
+            }
+
+            const thumbnailContent = showPlaceholder
+                ? `<div class="placeholder video-placeholder" data-video-path="${media.full_path}" data-media-idx="${idx}">
+                     <div class="thumb-loading">⏳</div>
+                   </div>`
+                : `<img data-src="${imageSrc}" alt="${media.filename}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=placeholder>📷</div>'">`;
+
+            const selectToggleHtml = media.type === 'video'
+                ? `<button type="button" class="select-toggle" title="Select for YouTube Queue" aria-label="Select"
+                     onclick="event.stopPropagation(); toggleSelect(${idx}, event)">
+                     <svg viewBox="0 0 24 24"><polyline points="5 12 10 17 19 8"/></svg>
+                   </button>`
+                : '';
+
+            const selectableClass = media.type === 'video' ? 'selectable' : '';
+            const selectedClass = isSelected(idx) ? 'selected' : '';
+
+            return `
+                <div class="media-card ${selectableClass} ${selectedClass}"
+                     data-idx="${idx}"
+                     onclick="openMedia(${idx})"
+                     oncontextmenu="showContextMenu(event, ${idx})">
+                    <div class="card-header">
+                        <span class="card-account">${icons[media.platform] || '📱'} ${media.account.substring(0, 15)}</span>
+                        <span class="card-type">${typeIcon}</span>
+                    </div>
+                    <div class="card-thumbnail">
+                        ${selectToggleHtml}
+                        ${thumbnailContent}
+                    </div>
+                    ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+                    ${media.caption ? `<div class="card-caption">${media.caption}</div>` : ''}
+                </div>
+            `;
+        }
+
+        let imageObserver = null;
+
+        function loadVisibleImages() {
+            if (imageObserver) imageObserver.disconnect();
+            const images = document.querySelectorAll('img[data-src]');
+            if (images.length === 0) return;
+            imageObserver = new IntersectionObserver((entries) => {
+                requestAnimationFrame(() => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const path = img.dataset.src;
+                            img.src = '/media/' + encodeURIComponent(path).replace(/%5C/g, '/').replace(/%3A/g, ':');
+                            delete img.dataset.src;
+                            imageObserver.unobserve(img);
+                        }
+                    });
+                });
+            }, { root: document.getElementById('gridContainer'), rootMargin: '200px', threshold: 0 });
+            images.forEach(img => imageObserver.observe(img));
+            generateVideoThumbnails();
+        }
+
+        let thumbGenQueue = [];
+        let isGeneratingThumbs = false;
+
+        function generateVideoThumbnails() {
+            const placeholders = document.querySelectorAll('.video-placeholder');
+            placeholders.forEach(placeholder => {
+                const videoPath = placeholder.dataset.videoPath;
+                const mediaIdx = placeholder.dataset.mediaIdx;
+                if (videoPath && !thumbGenQueue.includes(videoPath)) {
+                    thumbGenQueue.push({ videoPath, mediaIdx, element: placeholder });
+                }
+            });
+            if (!isGeneratingThumbs && thumbGenQueue.length > 0) processThumbQueue();
+        }
+
+        async function processThumbQueue() {
+            if (thumbGenQueue.length === 0) { isGeneratingThumbs = false; return; }
+            isGeneratingThumbs = true;
+            const item = thumbGenQueue.shift();
+            try {
+                const thumbPath = await generateThumbnailFromVideo(item.videoPath, item.element);
+                if (thumbPath && item.mediaIdx !== undefined) {
+                    const idx = parseInt(item.mediaIdx);
+                    if (mediaData[idx]) mediaData[idx].thumbnail = thumbPath;
+                }
+            } catch (e) {
+                console.log('Thumb gen failed:', item.videoPath, e);
+            }
+            setTimeout(processThumbQueue, 100);
+        }
+
+        async function generateThumbnailFromVideo(videoPath, placeholderElement) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.crossOrigin = 'anonymous';
+                video.muted = true;
+                video.preload = 'metadata';
+                const videoUrl = '/media/' + encodeURIComponent(videoPath).replace(/%5C/g, '/').replace(/%3A/g, ':');
+                video.onloadeddata = () => { try { video.currentTime = 0.1; } catch (e) { video.currentTime = 0; } };
+                video.onseeked = async () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxSize = 320;
+                        let width = video.videoWidth, height = video.videoHeight;
+                        if (width > height) { if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; } }
+                        else { if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize; } }
+                        canvas.width = width; canvas.height = height;
+                        ctx.drawImage(video, 0, 0, width, height);
+                        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                        const savedPath = await window.go.main.App.SaveVideoThumbnail(videoPath, base64);
+                        if (savedPath && placeholderElement) {
+                            const img = document.createElement('img');
+                            img.src = '/media/' + encodeURIComponent(savedPath).replace(/%5C/g, '/').replace(/%3A/g, ':');
+                            img.alt = 'thumbnail';
+                            img.onerror = () => { img.parentElement.innerHTML = '<div class="placeholder">🎬</div>'; };
+                            placeholderElement.parentElement.replaceChild(img, placeholderElement);
+                        }
+                        video.remove();
+                        resolve(savedPath);
+                    } catch (e) {
+                        video.remove();
+                        if (placeholderElement) placeholderElement.innerHTML = '🎬';
+                        reject(e);
+                    }
+                };
+                video.onerror = () => {
+                    video.remove();
+                    if (placeholderElement) placeholderElement.innerHTML = '🎬';
+                    reject(new Error('Failed to load video'));
+                };
+                setTimeout(() => {
+                    if (!video.videoWidth) {
+                        video.remove();
+                        if (placeholderElement) placeholderElement.innerHTML = '🎬';
+                        reject(new Error('Video load timeout'));
+                    }
+                }, 10000);
+                video.src = videoUrl;
+                video.load();
+            });
+        }
+
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) { func.apply(this, args); inThrottle = true; setTimeout(() => inThrottle = false, limit); }
+            };
+        }
+
+        function setupInfiniteScroll() {
+            const container = document.getElementById('gridContainer');
+            const handleScroll = throttle(() => {
+                if (isLoading || allLoaded) return;
+                const { scrollTop, scrollHeight, clientHeight } = container;
+                if (scrollTop + clientHeight >= scrollHeight - 300) {
+                    currentPage++;
+                    document.getElementById('loadingMore').style.display = 'block';
+                    loadData();
+                }
+            }, 100);
+            container.addEventListener('scroll', handleScroll, { passive: true });
+        }
+
+        function setupContextMenu() {
+            document.addEventListener('click', () => {
+                document.getElementById('contextMenu').classList.remove('show');
+            });
+        }
+
+        function showContextMenu(event, idx) {
+            event.preventDefault();
+            event.stopPropagation();
+            currentMedia = mediaData[idx];
+            const menu = document.getElementById('contextMenu');
+            menu.style.left = event.clientX + 'px';
+            menu.style.top = event.clientY + 'px';
+            menu.classList.add('show');
+        }
+
+        function openMedia(idx) {
+            if (selectedPaths.size > 0) {
+                const media = mediaData[idx];
+                if (media && media.type === 'video') { toggleSelect(idx); return; }
+            }
+            const media = mediaData[idx];
+            window.go.main.App.OpenFile(media.full_path);
+        }
+
+        function openCurrentMedia() {
+            if (currentMedia) window.go.main.App.OpenFile(currentMedia.full_path);
+        }
+
+        function openCurrentFolder() {
+            if (currentMedia) window.go.main.App.OpenFolder(currentMedia.full_path);
+        }
+
+        function copyPath() {
+            if (currentMedia) navigator.clipboard.writeText(currentMedia.full_path);
+        }
+
+        function filterByTag(e, tag) {
+            if (e) e.stopPropagation();
+            selectedTag = tag;
+            const tagFilter = document.getElementById('tagFilter');
+            const optionExists = Array.from(tagFilter.options).some(opt => opt.value === tag);
+            tagFilter.value = optionExists ? tag : '';
+            updateTagIndicator(tag);
+            applyFilters();
+        }
+
+        function handleTagClick(event, tag) {
+            event.stopPropagation();
+            event.preventDefault();
+            filterByTag(null, tag);
+        }
+
+        function setupTagClickHandler() {
+            document.getElementById('gridContainer').addEventListener('click', function(e) {
+                const tagEl = e.target.closest('.tag[data-tag]');
+                if (tagEl) {
+                    e.stopPropagation(); e.preventDefault();
+                    const textarea = document.createElement('textarea');
+                    textarea.innerHTML = tagEl.dataset.tag;
+                    filterByTag(null, textarea.value);
+                }
+            });
+        }
+
+        function updateTagIndicator(tag) {
+            let indicator = document.getElementById('customTagIndicator');
+            if (!tag) { if (indicator) indicator.style.display = 'none'; return; }
+            const tagFilter = document.getElementById('tagFilter');
+            const optionExists = Array.from(tagFilter.options).some(opt => opt.value === tag);
+            if (!optionExists) {
+                if (!indicator) {
+                    indicator = document.createElement('span');
+                    indicator.id = 'customTagIndicator';
+                    indicator.style.cssText = 'background: var(--accent-light); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; cursor: pointer;';
+                    indicator.onclick = () => {
+                        selectedTag = ''; tagFilter.value = '';
+                        indicator.style.display = 'none'; applyFilters();
+                    };
+                    tagFilter.parentNode.insertBefore(indicator, tagFilter.nextSibling);
+                }
+                indicator.innerHTML = `#${tag} <span style="font-weight:bold;">✕</span>`;
+                indicator.style.display = 'flex';
+            } else {
+                if (indicator) indicator.style.display = 'none';
+            }
+        }
+
+        function applyFilters() {
+            currentPage = 0;
+            allLoaded = false;
+            mediaData = [];
+            loadData();
+        }
+
+        function resetFilters() {
+            document.getElementById('platformFilter').value = 'All';
+            document.getElementById('typeFilter').value = 'All';
+            document.getElementById('accountFilter').value = 'All';
+            document.getElementById('groupFilter').value = '0';
+            document.getElementById('yearFilter').value = 'All';
+            document.getElementById('monthFilter').value = 'All';
+            document.getElementById('dayFilter').value = 'All';
+            document.getElementById('tagFilter').value = '';
+            document.getElementById('searchInput').value = '';
+            selectedTag = '';
+            updateTagIndicator('');
+            loadMonths();
+            loadDays();
+            applyFilters();
+        }
+
+        function handleSearch(event) { if (event.key === 'Enter') applyFilters(); }
+        async function onYearChange() { await loadMonths(); await loadDays(); applyFilters(); }
+        async function onMonthChange() { await loadDays(); applyFilters(); }
+        function onTagFilterChange() {
+            selectedTag = document.getElementById('tagFilter').value;
+            updateTagIndicator('');
+            applyFilters();
+        }
+        function onPlatformChange() { loadAccounts(); applyFilters(); }
+        function refreshData() { applyFilters(); }
+
+        // ==================== REINDEX MODAL ====================
+        function showReindexModal() {
+            document.getElementById('reindexModal').classList.add('show');
+            document.getElementById('modalTitle').textContent = t('modal_title');
+            document.getElementById('modalMessage').innerHTML = `${t('modal_message')}<br><small>${t('modal_message_sub')}</small>`;
+            document.getElementById('progressBar').style.display = 'none';
+            document.getElementById('modalButtons').innerHTML = `
+                <button class="btn btn-secondary" onclick="hideReindexModal()">${t('cancel')}</button>
+                <button class="btn btn-primary" onclick="startReindex()">${t('start_reindex')}</button>
+            `;
+        }
+
+        function hideReindexModal() {
+            document.getElementById('reindexModal').classList.remove('show');
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || seconds < 0 || !isFinite(seconds)) return '--:--';
+            seconds = Math.round(seconds);
+            if (seconds < 3600) {
+                const m = Math.floor(seconds / 60), s = seconds % 60;
+                return `${m}:${s.toString().padStart(2, '0')}`;
+            }
+            const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = seconds % 60;
+            return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        async function startReindex() {
+            document.getElementById('modalTitle').textContent = t('indexing');
+            document.getElementById('modalMessage').innerHTML = `
+                <div style="text-align: center;">
+                    <div id="progressPhase" style="margin-bottom: 10px; color: var(--accent-light);">${t('scanning')}</div>
+                    <div id="progressCount" style="font-size: 1.2em; margin-bottom: 5px;">0 / 0</div>
+                    <div id="progressPercent" style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 10px;">0%</div>
+                    <div style="margin-bottom: 5px;"><span style="color: var(--text-muted);">⏱️ Elapsed:</span> <span id="elapsedTime">0:00</span></div>
+                    <div style="margin-bottom: 10px;"><span style="color: var(--text-muted);">⏰ Remaining:</span> <span id="remainingTime" style="color: var(--success); font-weight: bold;">--:--</span></div>
+                    <div id="progressSpeed" style="font-size: 0.8em; color: var(--text-muted);">${t('speed', {speed: '--'})}</div>
+                </div>
+            `;
+            document.getElementById('progressBar').style.display = 'block';
+            document.getElementById('modalButtons').innerHTML = '';
+
+            window.runtime.EventsOn('indexProgress', (progress) => {
+                const phaseNames = {
+                    'counting': t('scanning'),
+                    'Twitter': '🐦 Twitter...',
+                    'Instagram': '📸 Instagram...',
+                    'TikTok': '🎵 TikTok...'
+                };
+                document.getElementById('progressPhase').textContent = phaseNames[progress.phase] || progress.phase;
+                document.getElementById('progressCount').textContent = `${progress.current.toLocaleString()} / ${progress.total.toLocaleString()}`;
+                document.getElementById('progressPercent').textContent = `${progress.percent.toFixed(1)}%`;
+                document.getElementById('elapsedTime').textContent = formatTime(progress.elapsed);
+                document.getElementById('remainingTime').textContent = formatTime(progress.remaining);
+                document.getElementById('progressSpeed').textContent = t('speed', {speed: progress.itemsPerSec.toFixed(0)});
+                const fill = document.querySelector('.progress-fill');
+                if (fill) fill.style.width = `${progress.percent}%`;
+            });
+
+            try {
+                const result = await window.go.main.App.ReindexDatabase();
+                window.runtime.EventsOff('indexProgress');
+                document.getElementById('progressBar').style.display = 'none';
+                if (result.success) {
+                    document.getElementById('modalTitle').textContent = t('reindex_complete');
+                    document.getElementById('modalMessage').innerHTML = `
+                        <span class="status-success">${result.message}</span><br>
+                        <small>${t('found_items', {count: result.total.toLocaleString()})}</small>
+                    `;
+                    document.getElementById('modalButtons').innerHTML = `<button class="btn btn-primary" onclick="closeAndRefresh()">OK</button>`;
+                } else {
+                    document.getElementById('modalTitle').textContent = t('reindex_error');
+                    document.getElementById('modalMessage').innerHTML = `<span class="status-error">${result.message}</span>`;
+                    document.getElementById('modalButtons').innerHTML = `
+                        <button class="btn btn-secondary" onclick="hideReindexModal()">${t('close')}</button>
+                        <button class="btn btn-primary" onclick="startReindex()">🔄 ${t('refresh')}</button>
+                    `;
+                }
+            } catch (error) {
+                window.runtime.EventsOff('indexProgress');
+                document.getElementById('progressBar').style.display = 'none';
+                document.getElementById('modalTitle').textContent = t('reindex_error');
+                document.getElementById('modalMessage').innerHTML = `<span class="status-error">${error.message || 'Unknown error'}</span>`;
+                document.getElementById('modalButtons').innerHTML = `<button class="btn btn-secondary" onclick="hideReindexModal()">${t('close')}</button>`;
+            }
+        }
+
+        function closeAndRefresh() {
+            hideReindexModal();
+            loadYears();
+            loadMonths();
+            loadDays();
+            loadTags();
+            loadAccounts();
+            applyFilters();
+        }
+
+        // ══════════════════════════════════════════════════════
+        // YOUTUBE QUEUE
+        // ══════════════════════════════════════════════════════
+
+        let selectedPaths = new Set();
+        let currentQueueItems = [];
+
+        function toggleSelect(idx, event) {
+            if (event) event.stopPropagation();
+            const media = mediaData[idx];
+            if (!media) return;
+            const path = media.full_path;
+            if (selectedPaths.has(path)) selectedPaths.delete(path);
+            else selectedPaths.add(path);
+            updateSelectionUI();
+        }
+
+        function isSelected(idx) {
+            const media = mediaData[idx];
+            return media && selectedPaths.has(media.full_path);
+        }
+
+        function updateSelectionUI() {
+            document.querySelectorAll('.media-card').forEach(card => {
+                const idx = parseInt(card.dataset.idx);
+                if (isSelected(idx)) card.classList.add('selected');
+                else card.classList.remove('selected');
+            });
+            const bar = document.getElementById('selectionBar');
+            const count = selectedPaths.size;
+            if (count > 0) {
+                document.body.classList.add('selection-active');
+                bar.classList.add('visible');
+                document.getElementById('selectionCount').textContent = `${count} selected`;
+            } else {
+                document.body.classList.remove('selection-active');
+                bar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            selectedPaths.clear();
+            updateSelectionUI();
+        }
+
+        async function addSelectionToQueue() {
+            if (selectedPaths.size === 0) return;
+            const paths = Array.from(selectedPaths);
+            const btn = document.getElementById('btnAddToQueue');
+            btn.disabled = true;
+            btn.textContent = '⏳ Adding...';
+            try {
+                const result = await window.go.main.App.AddToYouTubeQueue(paths, 'public');
+                alert(`✅ Added: ${result.added} | Skipped (already): ${result.skipped}`);
+                clearSelection();
+                await updateQueueBadge();
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📤 Add to Queue';
+            }
+        }
+
+        async function updateQueueBadge() {
+            try {
+                const stats = await window.go.main.App.GetYouTubeQueueStats();
+                const badge = document.getElementById('queueBadgeCount');
+                const pending = (stats.pending || 0) + (stats.uploading || 0);
+                if (pending > 0) {
+                    badge.textContent = pending;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            } catch (e) { console.log('Badge update error:', e); }
+        }
+
+        function showQueueModal() {
+            document.getElementById('queueModal').classList.add('show');
+            refreshQueue();
+            refreshWorkerStatus();
+        }
+
+        function hideQueueModal() {
+            document.getElementById('queueModal').classList.remove('show');
+        }
+
+        async function refreshQueue() {
+            const filter = document.getElementById('queueFilter').value;
+            const list = document.getElementById('queueList');
+            try {
+                const items = await window.go.main.App.GetYouTubeQueue(filter);
+                currentQueueItems = items;
+                const stats = await window.go.main.App.GetYouTubeQueueStats();
+                document.getElementById('qStatPending').textContent = stats.pending || 0;
+                document.getElementById('qStatUploading').textContent = stats.uploading || 0;
+                document.getElementById('qStatDone').textContent = stats.done || 0;
+                document.getElementById('qStatFailed').textContent = stats.failed || 0;
+                document.getElementById('qStatTotal').textContent = stats.total || 0;
+
+                if (!items || items.length === 0) {
+                    list.innerHTML = `<div class="queue-empty">
+                        <div style="font-size: 3rem;">📭</div>
+                        <p>Queue kosong. Pilih video dari grid dan klik "Add to Queue".</p>
+                    </div>`;
+                    return;
+                }
+
+                list.innerHTML = items.map(item => {
+                    const thumbSrc = item.thumbnail_path
+                        ? '/media/' + encodeURIComponent(item.thumbnail_path).replace(/%5C/g, '/').replace(/%3A/g, ':')
+                        : '';
+                    const thumbHtml = thumbSrc
+                        ? `<img class="queue-thumb" src="${thumbSrc}" onerror="this.outerHTML='<div class=\\'queue-thumb\\' style=\\'display:flex;align-items:center;justify-content:center;\\'>🎬</div>'">`
+                        : `<div class="queue-thumb" style="display:flex;align-items:center;justify-content:center;">🎬</div>`;
+                    const badgeClass = `badge-${item.status}`;
+                    const ytLink = item.youtube_url
+                        ? `<a href="${item.youtube_url}" target="_blank" style="color: #4ade80; text-decoration: none;">▶ Watch</a>`
+                        : '';
+                    const errorHtml = item.error
+                        ? `<div class="queue-error" title="${escapeHtml(item.error)}">❌ ${escapeHtml(item.error.substring(0, 100))}</div>`
+                        : '';
+                    return `
+                        <div class="queue-item status-${item.status}">
+                            ${thumbHtml}
+                            <div class="queue-info">
+                                <div class="queue-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+                                <div class="queue-meta">
+                                    <span class="queue-badge ${badgeClass}">${item.status}</span>
+                                    <span>${escapeHtml(item.platform || '-')}</span>
+                                    <span>@${escapeHtml(item.account || '-')}</span>
+                                    <span>${item.privacy}</span>
+                                    ${ytLink}
+                                </div>
+                                ${errorHtml}
+                            </div>
+                            <div class="queue-actions-cell">
+                                <button class="queue-btn-icon" onclick="showEditQueueItem(${item.id})" title="Edit">✏️</button>
+                                <button class="queue-btn-icon danger" onclick="removeQueueItem(${item.id})" title="Hapus">🗑</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                await updateQueueBadge();
+            } catch (e) {
+                list.innerHTML = `<div class="queue-empty" style="color: #f87171;">Error: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function showEditQueueItem(id) {
+            const item = currentQueueItems.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('editId').value = item.id;
+            document.getElementById('editTitle').value = item.title || '';
+            document.getElementById('editDesc').value = item.description || '';
+            document.getElementById('editPrivacy').value = item.privacy || 'public';
+            let tags = [];
+            try { tags = JSON.parse(item.tags || '[]'); } catch (e) {}
+            document.getElementById('editTags').value = tags.join(', ');
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function hideEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        async function saveEditQueueItem() {
+            const id = parseInt(document.getElementById('editId').value);
+            const title = document.getElementById('editTitle').value;
+            const desc = document.getElementById('editDesc').value;
+            const tagsRaw = document.getElementById('editTags').value;
+            const privacy = document.getElementById('editPrivacy').value;
+            const tags = tagsRaw.split(',').map(t => t.trim()).filter(t => t);
+            const tagsJSON = JSON.stringify(tags);
+            try {
+                await window.go.main.App.UpdateQueueItem(id, title, desc, tagsJSON, privacy);
+                hideEditModal();
+                refreshQueue();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function removeQueueItem(id) {
+            if (!confirm('Hapus item ini dari queue?')) return;
+            try {
+                await window.go.main.App.RemoveQueueItem(id);
+                refreshQueue();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function clearQueue(onlyDone) {
+            const msg = onlyDone
+                ? 'Hapus semua item yang sudah selesai/gagal?'
+                : 'Hapus semua item (kecuali sedang uploading)?';
+            if (!confirm(msg)) return;
+            try {
+                const n = await window.go.main.App.ClearYouTubeQueue(onlyDone);
+                alert(`Deleted: ${n}`);
+                refreshQueue();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function retryFailed() {
+            try {
+                const n = await window.go.main.App.RetryFailedQueue();
+                alert(`Retrying: ${n} items`);
+                refreshQueue();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function startWorker() {
+            try {
+                const r = await window.go.main.App.StartYouTubeWorker();
+                alert(r.ok ? '✅ ' + r.msg : '❌ ' + r.msg);
+                setTimeout(refreshWorkerStatus, 1000);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function stopWorker() {
+            try {
+                const r = await window.go.main.App.StopYouTubeWorker();
+                alert(r.ok ? '✅ ' + r.msg : '❌ ' + r.msg);
+                let tries = 0;
+                const refreshLoop = setInterval(async () => {
+                    tries++;
+                    await refreshWorkerStatus();
+                    await refreshQueue();
+                    const s = await window.go.main.App.GetYouTubeWorkerStatus();
+                    if (!s.running || tries >= 10) clearInterval(refreshLoop);
+                }, 500);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function refreshWorkerStatus() {
+            try {
+                const s = await window.go.main.App.GetYouTubeWorkerStatus();
+                const dot = document.getElementById('workerDot');
+                const txt = document.getElementById('workerStatusText');
+                if (s.running) {
+                    dot.classList.add('running');
+                    txt.textContent = `Worker: running (PID ${s.pid})`;
+                    document.getElementById('btnStartWorker').disabled = true;
+                    document.getElementById('btnStopWorker').disabled = false;
+                } else {
+                    dot.classList.remove('running');
+                    txt.textContent = 'Worker: stopped';
+                    document.getElementById('btnStartWorker').disabled = false;
+                    document.getElementById('btnStopWorker').disabled = true;
+                }
+            } catch (e) {}
+        }
+
+        // ══════════════════════════════════════════════════════
+        // IDOL GROUPS
+        // ══════════════════════════════════════════════════════
+
+        let groupsTree = [];
+        let selectedGroupId = null;
+        let collapsedGroups = new Set();
+        let groupDownloadActive = false;
+        let groupDownloadLogBuffer = [];
+
+        function toggleGroupsView() {
+            const view = document.getElementById('groupsView');
+            if (view.classList.contains('visible')) {
+                view.classList.remove('visible');
+            } else {
+                view.classList.add('visible');
+                loadGroupsTree();
+            }
+        }
+
+        async function loadGroupsTree() {
+            try {
+                groupsTree = await window.go.main.App.GetGroupTree();
+                renderGroupsTree();
+            } catch (e) { console.error('Load tree error:', e); }
+        }
+
+        function renderGroupsTree() {
+            const container = document.getElementById('groupsTree');
+            if (!groupsTree || groupsTree.length === 0) {
+                container.innerHTML = '<div class="groups-empty">Belum ada group.<br>Klik "+ New Group".</div>';
+                return;
+            }
+            container.innerHTML = groupsTree.map(n => renderGroupNode(n, 0)).join('');
+        }
+
+        function renderGroupNode(node, depth) {
+            const hasChildren = node.children && node.children.length > 0;
+            const collapsed = collapsedGroups.has(node.id);
+            const accountCount = (node.accounts || []).length;
+            const totalAccounts = accountCount + (node.children || []).reduce((s, c) => s + countAccountsRecursive(c), 0);
+
+            const toggle = hasChildren
+                ? `<span class="group-toggle ${collapsed ? 'collapsed' : ''}"
+                        onclick="event.stopPropagation(); toggleCollapse(${node.id})">▼</span>`
+                : '<span class="group-toggle-placeholder"></span>';
+            const active = node.id === selectedGroupId ? 'active' : '';
+            const indent = depth * 16;
+
+            const html = `
+                <div class="group-node ${active}"
+                     style="padding-left: ${16 + indent}px"
+                     data-id="${node.id}"
+                     onclick="selectGroup(${node.id})">
+                    ${toggle}
+                    <span class="group-icon">${node.icon}</span>
+                    <span class="group-name">${escapeHtml(node.name)}</span>
+                    ${totalAccounts > 0 ? `<span class="group-count">${totalAccounts}</span>` : ''}
+                    <div class="group-actions">
+                        <button class="group-action" title="Add Member" onclick="event.stopPropagation(); showCreateGroupModal(${node.id})">➕</button>
+                        <button class="group-action" title="Edit" onclick="event.stopPropagation(); showEditGroupModal(${node.id})">✏️</button>
+                        <button class="group-action" title="Delete" onclick="event.stopPropagation(); deleteGroup(${node.id})">🗑</button>
+                    </div>
+                </div>
+            `;
+
+            let childrenHtml = '';
+            if (hasChildren && !collapsed) {
+                childrenHtml = node.children.map(c => renderGroupNode(c, depth + 1)).join('');
+            }
+            return html + childrenHtml;
+        }
+
+        function countAccountsRecursive(node) {
+            let c = (node.accounts || []).length;
+            for (const child of (node.children || [])) c += countAccountsRecursive(child);
+            return c;
+        }
+
+        function toggleCollapse(id) {
+            if (collapsedGroups.has(id)) collapsedGroups.delete(id);
+            else collapsedGroups.add(id);
+            renderGroupsTree();
+        }
+
+        function findGroupNode(id, nodes) {
+            if (!nodes) nodes = groupsTree;
+            for (const n of nodes) {
+                if (n.id === id) return n;
+                const found = findGroupNode(id, n.children || []);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        async function selectGroup(id) {
+            selectedGroupId = id;
+            renderGroupsTree();
+            await renderGroupDetail(id);
+        }
+
+        async function renderGroupDetail(groupId) {
+            const main = document.getElementById('groupsMain');
+            const node = findGroupNode(groupId);
+            if (!node) {
+                main.innerHTML = '<div class="groups-placeholder"><div style="font-size:4rem;">❓</div><p>Group tidak ditemukan</p></div>';
+                return;
+            }
+            let runs = [];
+            try { runs = await window.go.main.App.GetGroupRuns(groupId, 10); } catch (e) {}
+            const totalAccounts = countAccountsRecursive(node);
+            const totalMembers = (node.children || []).length;
+
+            main.innerHTML = `
+                <div class="group-detail-header">
+                    <div class="group-detail-icon">${node.icon}</div>
+                    <div class="group-detail-title">
+                        <h2>${escapeHtml(node.name)}</h2>
+                        <div class="meta">${totalMembers} member • ${totalAccounts} akun</div>
+                    </div>
+                </div>
+
+                <div class="group-action-bar">
+                    <button class="btn-download-new" onclick="showDownloadGroupModal(${groupId})" ${totalAccounts === 0 ? 'disabled' : ''}>
+                        📥 Download New Posts
+                        <span class="sub">Cek ${totalAccounts} akun, download yang belum ada</span>
+                    </button>
+                    <button class="btn" onclick="showCreateGroupModal(${groupId})" style="background: #16a34a;">
+                        ➕ Add Member
+                    </button>
+                    <button class="btn" onclick="showAddAccountModal(${groupId})" style="background: #2563eb;">
+                        🔗 Add Account
+                    </button>
+                </div>
+
+                <div class="group-progress" id="groupProgress">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="font-size:0.85rem; color:var(--text-muted);" id="groupProgressLabel">Processing...</span>
+                        <button class="btn" onclick="stopGroupDownload()" style="background:#7f1d1d; padding:4px 12px; font-size:0.8rem;">⏸ Stop</button>
+                    </div>
+                    <div class="group-progress-bar"><div class="group-progress-fill" id="groupProgressFill"></div></div>
+                    <div class="group-progress-log" id="groupProgressLog"></div>
+                </div>
+
+                ${(node.accounts && node.accounts.length > 0) || (node.children && node.children.length > 0) ? `
+                <div class="group-section-title">Members & Accounts</div>
+                <div class="member-list">${renderMemberList(node)}</div>
+                ` : ''}
+
+                ${runs.length > 0 ? `
+                <div class="group-section-title">History</div>
+                <div class="run-history">${runs.map(r => renderRunItem(r)).join('')}</div>
+                ` : ''}
+            `;
+        }
+
+        function renderMemberList(node) {
+            let html = '';
+            if (node.accounts && node.accounts.length > 0) {
+                const accountsHtml = node.accounts.map(a => renderAccountRow(a)).join('');
+                html += `
+                    <div class="member-item">
+                        <div class="member-info">
+                            <div class="member-name">
+                                <span>${node.icon}</span>
+                                <span>${escapeHtml(node.name)}</span>
+                            </div>
+                            <div class="member-accounts">${accountsHtml}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            for (const child of (node.children || [])) {
+                const childAccounts = (child.accounts || []).map(a => renderAccountRow(a)).join('');
+                html += `
+                    <div class="member-item">
+                        <div class="member-info">
+                            <div class="member-name">
+                                <span>${child.icon}</span>
+                                <span>${escapeHtml(child.name)}</span>
+                            </div>
+                            <div class="member-accounts">
+                                ${childAccounts || '<span style="color:#666; font-size:0.8rem; margin-left:8px;">Belum ada akun</span>'}
+                            </div>
+                        </div>
+                        <div class="member-actions">
+                            <button onclick="showAddAccountModal(${child.id})" title="Add account">🔗</button>
+                            <button onclick="showEditGroupModal(${child.id})" title="Edit">✏️</button>
+                            <button onclick="deleteGroup(${child.id})" title="Delete">🗑</button>
+                        </div>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function renderAccountRow(acc) {
+            const icons = { instagram: '📷', tiktok: '🎵', twitter: '𝕏' };
+            const statusClass = acc.enabled ? '' : 'disabled';
+            const lastCheck = acc.last_check_at ? formatRelativeTime(acc.last_check_at) : 'never';
+            return `
+                <div class="account-row">
+                    <span class="status-dot ${statusClass}"></span>
+                    <span class="platform-badge">${icons[acc.platform] || '?'} ${acc.platform}</span>
+                    <span class="username">@${escapeHtml(acc.username)}</span>
+                    <span style="color:#666; font-size:0.75rem;">• last: ${lastCheck}</span>
+                    <button onclick="editAccount(${acc.id})" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:0.75rem;">✏️</button>
+                    <button onclick="removeAccount(${acc.id})" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:0.75rem;">🗑</button>
+                </div>
+            `;
+        }
+
+        function renderRunItem(r) {
+            const icons = { done: '✅', failed: '❌', cancelled: '⏸️', running: '⏳' };
+            const date = r.started_at ? r.started_at.replace('T', ' ').split('.')[0] : '';
+            return `
+                <div class="run-item">
+                    <span class="status-icon">${icons[r.status] || '❓'}</span>
+                    <div class="run-info">
+                        <div>${date} — ${r.checked_accounts}/${r.total_accounts} akun</div>
+                    </div>
+                    <div class="run-stats">
+                        <span class="run-stat">🆕 ${r.new_posts_found}</span>
+                        <span class="run-stat">⬇️ ${r.new_posts_downloaded}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatRelativeTime(s) {
+            try {
+                const t = new Date(s.replace(' ', 'T') + 'Z');
+                const diff = (Date.now() - t.getTime()) / 1000;
+                if (diff < 60) return Math.floor(diff) + 's ago';
+                if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+                if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+                return Math.floor(diff / 86400) + 'd ago';
+            } catch (e) { return s; }
+        }
+
+        // ─── GROUP EDIT MODAL ───
+        function showCreateGroupModal(parentId) {
+            document.getElementById('groupEditTitle').textContent = parentId ? '➕ New Member' : '➕ New Group';
+            document.getElementById('groupEditId').value = '';
+            document.getElementById('groupEditParentId').value = parentId || '';
+            document.getElementById('groupEditName').value = '';
+            document.getElementById('groupEditIcon').value = parentId ? '👤' : '👥';
+            document.getElementById('groupEditColor').value = '#4a9eff';
+            const info = document.getElementById('groupEditParentInfo');
+            if (parentId) {
+                const parent = findGroupNode(parentId);
+                info.textContent = `Parent: ${parent ? parent.name : '?'}`;
+            } else {
+                info.textContent = '';
+            }
+            document.getElementById('groupEditModal').classList.add('show');
+        }
+
+        function showEditGroupModal(id) {
+            const node = findGroupNode(id);
+            if (!node) return;
+            document.getElementById('groupEditTitle').textContent = '✏️ Edit Group';
+            document.getElementById('groupEditId').value = id;
+            document.getElementById('groupEditParentId').value = node.parent_id || '';
+            document.getElementById('groupEditName').value = node.name;
+            document.getElementById('groupEditIcon').value = node.icon;
+            document.getElementById('groupEditColor').value = node.color;
+            document.getElementById('groupEditParentInfo').textContent = '';
+            document.getElementById('groupEditModal').classList.add('show');
+        }
+
+        function hideGroupEditModal() {
+            document.getElementById('groupEditModal').classList.remove('show');
+        }
+
+        async function saveGroupEdit() {
+            const id = document.getElementById('groupEditId').value;
+            const parentId = document.getElementById('groupEditParentId').value;
+            const name = document.getElementById('groupEditName').value.trim();
+            const icon = document.getElementById('groupEditIcon').value || '👤';
+            const color = document.getElementById('groupEditColor').value;
+            if (!name) { alert('Nama wajib diisi'); return; }
+            try {
+                if (id) {
+                    await window.go.main.App.UpdateGroup(parseInt(id), name, icon, color);
+                } else {
+                    const pid = parentId ? parseInt(parentId) : 0;
+                    const r = await window.go.main.App.CreateGroup(name, pid);
+                    if (!r.ok) { alert('Error: ' + r.msg); return; }
+                }
+                hideGroupEditModal();
+                await loadGroupsTree();
+                await loadGroupOptions();
+                if (selectedGroupId) await renderGroupDetail(selectedGroupId);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function deleteGroup(id) {
+            if (!confirm('Hapus group beserta semua sub-group dan akun di dalamnya?')) return;
+            try {
+                await window.go.main.App.DeleteGroup(id);
+                if (selectedGroupId === id) {
+                    selectedGroupId = null;
+                    document.getElementById('groupsMain').innerHTML =
+                        '<div class="groups-placeholder"><div style="font-size:4rem;">👥</div><p>Pilih group di sidebar</p></div>';
+                }
+                await loadGroupsTree();
+                await loadGroupOptions();      // ← TAMBAH
+                const gf = document.getElementById('groupFilter');
+                if (gf && parseInt(gf.value) === id) {
+                    gf.value = '0';
+                    applyFilters();
+                }
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // ACCOUNT MODAL + COMBO DROPDOWN
+        // ══════════════════════════════════════════════════════
+
+        let existingAccountsCache = [];
+
+        async function loadExistingAccounts(platform) {
+            const countEl = document.getElementById('accountExistingCount');
+            if (!platform) {
+                existingAccountsCache = [];
+                if (countEl) countEl.textContent = '0';
+                return;
+            }
+            const platformMap = {
+                'instagram': 'Instagram',
+                'tiktok': 'TikTok',
+                'twitter': 'Twitter'
+            };
+            const dbPlatform = platformMap[platform.toLowerCase()] || platform;
+            try {
+                const accounts = await window.go.main.App.GetAccountsForPlatform(dbPlatform);
+                existingAccountsCache = accounts || [];
+                if (countEl) countEl.textContent = existingAccountsCache.length;
+                renderAccountDropdown(existingAccountsCache);
+            } catch (e) {
+                console.error('Load existing accounts error:', e);
+                existingAccountsCache = [];
+                if (countEl) countEl.textContent = '0';
+            }
+        }
+
+        function renderAccountDropdown(accounts, filter = '') {
+            const listEl = document.getElementById('accountDropdownList');
+            const emptyEl = document.getElementById('accountDropdownEmpty');
+            if (!listEl || !emptyEl) return;
+            Array.from(listEl.querySelectorAll('.combo-item')).forEach(el => el.remove());
+            const filtered = filter
+                ? accounts.filter(a => a.toLowerCase().includes(filter.toLowerCase()))
+                : accounts;
+            if (filtered.length === 0) {
+                emptyEl.style.display = 'block';
+                emptyEl.textContent = accounts.length === 0
+                    ? 'Tidak ada existing account'
+                    : 'Tidak ada yang cocok';
+                return;
+            }
+            emptyEl.style.display = 'none';
+            filtered.forEach(acc => {
+                const item = document.createElement('div');
+                item.className = 'combo-item';
+                item.innerHTML = `<span class="platform-icon-small">@</span>${escapeHtml(acc)}`;
+                item.onclick = () => {
+                    const input = document.getElementById('accountEditUsername');
+                    if (input) input.value = acc;
+                    hideAccountDropdown();
+                };
+                listEl.appendChild(item);
+            });
+        }
+
+        function showAccountDropdown() {
+            const listEl = document.getElementById('accountDropdownList');
+            const input = document.getElementById('accountEditUsername');
+            if (!listEl || !input) return;
+            renderAccountDropdown(existingAccountsCache, input.value);
+            listEl.style.display = 'block';
+        }
+
+        function hideAccountDropdown() {
+            const listEl = document.getElementById('accountDropdownList');
+            if (listEl) listEl.style.display = 'none';
+        }
+
+        function onAccountPlatformChange(platform) {
+            hideAccountDropdown();
+            loadExistingAccounts(platform);
+        }
+
+        function showAddAccountModal(groupId) {
+            document.getElementById('accountEditTitle').textContent = '➕ Add Account';
+            document.getElementById('accountEditId').value = '';
+            document.getElementById('accountEditGroupId').value = groupId;
+            document.getElementById('accountEditPlatform').value = 'instagram';
+            document.getElementById('accountEditPlatform').disabled = false;
+            document.getElementById('accountEditUsername').value = '';
+            document.getElementById('accountEditEnabled').checked = true;
+            document.getElementById('accountEditModal').classList.add('show');
+            loadExistingAccounts('instagram');
+        }
+
+        function editAccount(accId) {
+            let acc = null;
+            function find(accs) {
+                for (const a of accs) if (a.id === accId) return a;
+                return null;
+            }
+            function walk(nodes) {
+                for (const n of nodes) {
+                    const found = find(n.accounts || []);
+                    if (found) return found;
+                    const deeper = walk(n.children || []);
+                    if (deeper) return deeper;
+                }
+                return null;
+            }
+            acc = walk(groupsTree);
+            if (!acc) return;
+
+            document.getElementById('accountEditTitle').textContent = '✏️ Edit Account';
+            document.getElementById('accountEditId').value = accId;
+            document.getElementById('accountEditGroupId').value = acc.group_id;
+            document.getElementById('accountEditPlatform').value = acc.platform;
+            document.getElementById('accountEditPlatform').disabled = true;
+            document.getElementById('accountEditUsername').value = acc.username;
+            document.getElementById('accountEditEnabled').checked = acc.enabled;
+            document.getElementById('accountEditModal').classList.add('show');
+            loadExistingAccounts(acc.platform);
+        }
+
+        function hideAccountEditModal() {
+            hideAccountDropdown();
+            document.getElementById('accountEditModal').classList.remove('show');
+            document.getElementById('accountEditPlatform').disabled = false;
+        }
+
+        async function saveAccountEdit() {
+            const id = document.getElementById('accountEditId').value;
+            const groupId = parseInt(document.getElementById('accountEditGroupId').value);
+            const platform = document.getElementById('accountEditPlatform').value;
+            const username = document.getElementById('accountEditUsername').value.trim().replace(/^@/, '');
+            const enabled = document.getElementById('accountEditEnabled').checked;
+            if (!username) { alert('Username wajib diisi'); return; }
+            try {
+                if (id) {
+                    await window.go.main.App.UpdateAccount(parseInt(id), username, enabled);
+                } else {
+                    const r = await window.go.main.App.AddAccount(groupId, platform, username);
+                    if (!r.ok) { alert('Error: ' + r.msg); return; }
+                }
+                hideAccountEditModal();
+                await loadGroupsTree();
+                if (selectedGroupId) await renderGroupDetail(selectedGroupId);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function removeAccount(accId) {
+            if (!confirm('Hapus akun ini?')) return;
+            try {
+                await window.go.main.App.RemoveAccount(accId);
+                await loadGroupsTree();
+                if (selectedGroupId) await renderGroupDetail(selectedGroupId);
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // DOWNLOAD NEW POSTS
+        // ══════════════════════════════════════════════════════
+
+        function showDownloadGroupModal(groupId) {
+            const node = findGroupNode(groupId);
+            if (!node) return;
+            document.getElementById('downloadGroupId').value = groupId;
+            document.getElementById('downloadGroupTitle').textContent = `📥 Download New Posts — ${node.name}`;
+            const totalAccounts = countAccountsRecursive(node);
+            document.getElementById('downloadGroupInfo').innerHTML = `
+                Total akun dalam group ini: <b>${totalAccounts}</b><br>
+                Akan diproses linear (satu per satu).
+            `;
+            document.getElementById('downloadGroupModal').classList.add('show');
+        }
+
+        function hideDownloadGroupModal() {
+            document.getElementById('downloadGroupModal').classList.remove('show');
+        }
+
+        async function startGroupDownload() {
+            const groupId = parseInt(document.getElementById('downloadGroupId').value);
+            const platforms = [];
+            if (document.getElementById('dlPlatformIG').checked) platforms.push('instagram');
+            if (document.getElementById('dlPlatformTT').checked) platforms.push('tiktok');
+            if (platforms.length === 0) { alert('Pilih minimal 1 platform'); return; }
+            try {
+                const r = await window.go.main.App.StartGroupDownload(groupId, platforms);
+                if (!r.ok) { alert('Error: ' + r.msg); return; }
+                hideDownloadGroupModal();
+                groupDownloadActive = true;
+                groupDownloadLogBuffer = [];
+                showGroupProgress();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function stopGroupDownload() {
+            if (!confirm('Stop download yang sedang berjalan?')) return;
+            try { await window.go.main.App.StopGroupDownload(); }
+            catch (e) { alert('Error: ' + e.message); }
+        }
+
+        function showGroupProgress() {
+            const el = document.getElementById('groupProgress');
+            if (!el) return;
+            el.classList.add('visible');
+            document.getElementById('groupProgressLabel').textContent = 'Processing...';
+            document.getElementById('groupProgressLog').textContent = '';
+            document.getElementById('groupProgressFill').style.width = '0%';
+        }
+
+        // ══════════════════════════════════════════════════════
+        // EVENT LISTENERS
+        // ══════════════════════════════════════════════════════
+
+        if (window.runtime) {
+            // YouTube worker
+            window.runtime.EventsOn('youtubeWorkerStopped', () => {
+                refreshWorkerStatus();
+                refreshQueue();
+            });
+            window.runtime.EventsOn('youtubeWorkerLog', (line) => {
+                console.log('[PY Worker]', line);
+            });
+
+            // Group download
+            window.runtime.EventsOn('groupDownloadLog', (line) => {
+                groupDownloadLogBuffer.push(line);
+                if (groupDownloadLogBuffer.length > 500) groupDownloadLogBuffer.shift();
+                const logEl = document.getElementById('groupProgressLog');
+                if (logEl) {
+                    logEl.textContent = groupDownloadLogBuffer.slice(-200).join('\n');
+                    logEl.scrollTop = logEl.scrollHeight;
+                }
+                const m = line.match(/\[(\d+)\/(\d+)\]/);
+                if (m) {
+                    const cur = parseInt(m[1]);
+                    const tot = parseInt(m[2]);
+                    const fill = document.getElementById('groupProgressFill');
+                    if (fill) fill.style.width = `${(cur / tot) * 100}%`;
+                    const label = document.getElementById('groupProgressLabel');
+                    if (label) label.textContent = `Processing ${cur}/${tot}...`;
+                }
+            });
+
+            window.runtime.EventsOn('groupDownloadDone', (groupId) => {
+                groupDownloadActive = false;
+                const label = document.getElementById('groupProgressLabel');
+                if (label) label.textContent = '✅ Selesai';
+                const fill = document.getElementById('groupProgressFill');
+                if (fill) fill.style.width = '100%';
+                setTimeout(() => {
+                    const el = document.getElementById('groupProgress');
+                    if (el) el.classList.remove('visible');
+                }, 3000);
+                if (selectedGroupId) renderGroupDetail(selectedGroupId);
+                setTimeout(() => loadData(), 1000);
+            });
+        }
+
+        // Auto refresh queue saat modal terbuka
+        setInterval(() => {
+            const modal = document.getElementById('queueModal');
+            if (modal && modal.classList.contains('show')) {
+                refreshQueue();
+                refreshWorkerStatus();
+            }
+        }, 3000);
+
+        setInterval(updateQueueBadge, 10000);
+
+        // ══════════════════════════════════════════════════════
+        // SETUP — COMBO DROPDOWN + INIT
+        // ══════════════════════════════════════════════════════
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(updateQueueBadge, 1500);
+            setTimeout(() => { loadGroupsTree().catch(() => {}); }, 2000);
+
+            // Setup combo dropdown untuk Add Account
+            setTimeout(() => {
+                const input = document.getElementById('accountEditUsername');
+                const btn = document.getElementById('accountDropdownBtn');
+
+                if (input) {
+                    input.addEventListener('focus', () => {
+                        if (existingAccountsCache.length > 0) showAccountDropdown();
+                    });
+                    input.addEventListener('input', () => {
+                        showAccountDropdown();
+                    });
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape') hideAccountDropdown();
+                    });
+                }
+
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const listEl = document.getElementById('accountDropdownList');
+                        if (listEl && listEl.style.display === 'block') {
+                            hideAccountDropdown();
+                        } else {
+                            showAccountDropdown();
+                        }
+                    });
+                }
+
+                document.addEventListener('click', (e) => {
+                    const wrapper = e.target.closest('.combo-wrapper');
+                    if (!wrapper) hideAccountDropdown();
+                });
+            }, 100);
+        });
+        
+        // ══════════════════════════════════════════════════════
+        // MANUAL DOWNLOAD MODAL
+        // ══════════════════════════════════════════════════════
+
+        let mdlCurrentPlatform = 'instagram';
+        let mdlLogBuffer = [];
+        let mdlRunning = false;
+
+        function showManualDownloadModal() {
+            document.getElementById('manualDownloadModal').classList.add('show');
+            // Reset
+            mdlLogBuffer = [];
+            document.getElementById('mdlProgress').style.display = 'none';
+            document.getElementById('mdlProgressLog').textContent = '';
+            document.getElementById('mdlProgressFill').style.width = '0%';
+            document.getElementById('mdlFooterStatus').textContent = '';
+            updateMdlUserCount();
+
+            // Focus ke textarea
+            setTimeout(() => {
+                const ta = document.getElementById('mdlUsernames');
+                if (ta) ta.focus();
+            }, 100);
+        }
+
+        function hideManualDownloadModal() {
+            if (mdlRunning) {
+                if (!confirm('Download sedang berjalan. Tutup modal? (worker tetap jalan di background)')) {
+                    return;
+                }
+            }
+            document.getElementById('manualDownloadModal').classList.remove('show');
+        }
+
+        function switchMdlTab(platform) {
+            if (platform === 'twitter') return;
+            mdlCurrentPlatform = platform;
+
+            document.querySelectorAll('.mdl-tab').forEach(t => {
+                if (t.dataset.platform === platform) t.classList.add('active');
+                else t.classList.remove('active');
+            });
+
+            const ta = document.getElementById('mdlUsernames');
+            const w = document.getElementById('mdlWorkers');
+            const warn = document.getElementById('mdlWarning');
+
+            if (platform === 'facebook') {
+                ta.placeholder = 'https://web.facebook.com/uniskpop\nhttps://web.facebook.com/anotherpage';
+                if (w) { w.value = 1; w.disabled = true; }
+                if (warn) {
+                    warn.innerHTML = '⚠️ <b>Facebook:</b> delay minimal 3 detik antar video. Facebook sangat agresif rate limit. Jangan download >3 Page per run.';
+                }
+            } else if (platform === 'instagram') {
+                ta.placeholder = 'kareai_rio\nmomoko_hashimoto\nsaara_hazuki';
+                if (w) w.disabled = false;
+                if (warn) {
+                    warn.innerHTML = '⚠️ <b>Instagram:</b> hindari download &gt;3 akun per run untuk menghindari rate limit / challenge.';
+                }
+            } else if (platform === 'tiktok') {
+                ta.placeholder = 'momoko_hashimoto\nsaara_hazuki';
+                if (w) w.disabled = false;
+                if (warn) {
+                    warn.innerHTML = '✅ <b>TikTok:</b> rate limit lebih longgar. Bisa download banyak akun sekaligus.';
+                }
+            }
+
+            updateMdlUserCount();
+        }
+        function updateMdlUserCount() {
+            const raw = document.getElementById('mdlUsernames').value;
+            let items;
+            if (mdlCurrentPlatform === 'facebook') {
+                // Facebook: input URL
+                items = raw.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
+            } else {
+                // IG/TikTok: input username
+                items = raw.split('\n')
+                    .map(l => l.trim().replace(/^@/, ''))
+                    .filter(l => l.length > 0);
+            }
+            document.getElementById('mdlUserCount').textContent = items.length;
+        }
+
+        async function mdlPasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const ta = document.getElementById('mdlUsernames');
+                if (ta.value && !ta.value.endsWith('\n')) ta.value += '\n';
+                ta.value += text;
+                updateMdlUserCount();
+            } catch (e) {
+                alert('Gagal paste: ' + e.message);
+            }
+        }
+
+        async function mdlLoadExisting() {
+            const platformMap = {
+                'instagram': 'Instagram',
+                'tiktok': 'TikTok'
+            };
+            const dbPlatform = platformMap[mdlCurrentPlatform] || 'Instagram';
+            try {
+                const accounts = await window.go.main.App.GetAccountsForPlatform(dbPlatform);
+                if (!accounts || accounts.length === 0) {
+                    alert('Tidak ada existing account untuk platform ini');
+                    return;
+                }
+                const ta = document.getElementById('mdlUsernames');
+                ta.value = accounts.join('\n');
+                updateMdlUserCount();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function startManualDownload() {
+            const raw = document.getElementById('mdlUsernames').value;
+
+            // ⚡ Facebook = input URL, IG/TikTok = input username
+            let items = [];
+            if (mdlCurrentPlatform === 'facebook') {
+                items = raw.split('\n')
+                    .map(l => l.trim())
+                    .filter(l => l.length > 0 && l.startsWith('http'));
+                // Dedup
+                items = [...new Set(items)];
+            } else {
+                items = raw.split('\n')
+                    .map(l => l.trim().replace(/^@/, ''))
+                    .filter(l => l.length > 0);
+            }
+
+            // Validasi
+            if (items.length === 0) {
+                if (mdlCurrentPlatform === 'facebook') {
+                    alert('Isi minimal 1 URL Page Facebook (harus mulai dengan http:// atau https://)');
+                } else {
+                    alert('Isi minimal 1 username');
+                }
+                return;
+            }
+
+            // Warning IG
+            if (mdlCurrentPlatform === 'instagram' && items.length > 5) {
+                if (!confirm(`⚠️ Anda akan download ${items.length} akun IG.\n\n` +
+                             `Instagram mungkin rate-limit. Disarankan max 3-5 akun per run.\n\n` +
+                             `Lanjutkan?`)) return;
+            }
+
+            // Warning FB
+            if (mdlCurrentPlatform === 'facebook') {
+                if (items.length > 3) {
+                    if (!confirm(`⚠️ Anda akan download ${items.length} Page Facebook.\n\n` +
+                                 `Facebook sangat agresif rate limit. Disarankan max 1-3 Page per run.\n\n` +
+                                 `Lanjutkan?`)) return;
+                }
+            }
+
+            // Build config
+            // ⚡ Facebook: force minimal 3 detik delay
+            let delay = parseFloat(document.getElementById('mdlDelay').value) || 2.0;
+            if (mdlCurrentPlatform === 'facebook' && delay < 3.0) {
+                delay = 3.0;
+            }
+
+            const cfg = {
+                platform: mdlCurrentPlatform,
+                usernames: items,
+                quality: document.getElementById('mdlQuality').value,
+                delay: delay,                                        // ← pakai delay yang sudah di-adjust
+                use_archive: document.getElementById('mdlUseArchive').checked,
+                max_workers: mdlCurrentPlatform === 'facebook'
+                    ? 1
+                    : (parseInt(document.getElementById('mdlWorkers').value) || 1),
+            };
+
+            // Untuk Facebook, force delay minimal 3 detik (rate limit agresif)
+            if (mdlCurrentPlatform === 'facebook' && cfg.delay < 3.0) {
+                cfg.delay = 3.0;
+            }
+
+            try {
+                const r = await window.go.main.App.StartManualDownload(cfg);
+                if (!r.ok) {
+                    alert('❌ ' + r.msg);
+                    return;
+                }
+
+                // UI feedback: lock inputs, show progress
+                mdlRunning = true;
+                mdlLogBuffer = [];
+                document.getElementById('mdlProgress').style.display = 'block';
+                document.getElementById('mdlProgressLabel').textContent = 'Starting...';
+                document.getElementById('mdlProgressLog').textContent = '';
+                document.getElementById('mdlProgressFill').style.width = '0%';
+                document.getElementById('mdlProgressPercent').textContent = '0%';
+                document.getElementById('mdlStartBtn').style.display = 'none';
+                document.getElementById('mdlStopBtn').style.display = 'inline-block';
+                document.getElementById('mdlCancelBtn').textContent = 'Close';
+                document.getElementById('mdlFooterStatus').textContent =
+                    `Running: ${items.length} ${mdlCurrentPlatform === 'facebook' ? 'Page' : 'user'}`;
+
+                // Lock inputs
+                document.getElementById('mdlUsernames').disabled = true;
+                document.querySelectorAll('.mdl-tab').forEach(t => {
+                    if (t.dataset.platform !== 'twitter') t.disabled = true;
+                });
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        async function stopManualDownload() {
+            if (!confirm('Stop download yang sedang berjalan?')) return;
+            try {
+                const r = await window.go.main.App.StopManualDownload();
+                if (!r.ok) alert('❌ ' + r.msg);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Event listeners untuk worker
+        if (window.runtime) {
+            window.runtime.EventsOn('manualDownloadLog', (line) => {
+                mdlLogBuffer.push(line);
+                if (mdlLogBuffer.length > 1000) mdlLogBuffer.shift();
+
+                const logEl = document.getElementById('mdlProgressLog');
+                if (logEl) {
+                    logEl.textContent = mdlLogBuffer.slice(-300).join('\n');
+                    logEl.scrollTop = logEl.scrollHeight;
+                }
+
+                // Parse progress: "[3/8]"
+                const m = line.match(/\[(\d+)\/(\d+)\]/);
+                if (m) {
+                    const cur = parseInt(m[1]);
+                    const tot = parseInt(m[2]);
+                    const pct = (cur / tot) * 100;
+                    const fill = document.getElementById('mdlProgressFill');
+                    const pctEl = document.getElementById('mdlProgressPercent');
+                    const label = document.getElementById('mdlProgressLabel');
+                    if (fill) fill.style.width = pct + '%';
+                    if (pctEl) pctEl.textContent = pct.toFixed(0) + '%';
+                    if (label) label.textContent = `Processing ${cur}/${tot}...`;
+                }
+            });
+
+            window.runtime.EventsOn('manualDownloadDone', (success) => {
+                mdlRunning = false;
+                const label = document.getElementById('mdlProgressLabel');
+                if (label) label.textContent = success ? '✅ Selesai' : '⏸️ Dihentikan';
+                const fill = document.getElementById('mdlProgressFill');
+                if (fill) fill.style.width = '100%';
+
+                document.getElementById('mdlStartBtn').style.display = 'inline-block';
+                document.getElementById('mdlStopBtn').style.display = 'none';
+                document.getElementById('mdlCancelBtn').textContent = 'Close';
+                document.getElementById('mdlFooterStatus').textContent = success ? 'Success' : 'Stopped';
+
+                // Unlock inputs
+                document.getElementById('mdlUsernames').disabled = false;
+                document.querySelectorAll('.mdl-tab').forEach(t => {
+                    if (t.dataset.platform !== 'twitter') t.disabled = false;
+                });
+
+                // Refresh grid supaya file baru muncul
+                setTimeout(() => loadData(), 1000);
+            });
+        }
+
+        // Listener untuk update user count saat mengetik
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const ta = document.getElementById('mdlUsernames');
+                if (ta) ta.addEventListener('input', updateMdlUserCount);
+            }, 100);
+        });
+        
+        // ══════════════════════════════════════════════════════
+        // INCREMENTAL REINDEX (Quick Scan)
+        // ══════════════════════════════════════════════════════
+
+        async function runIncrementalReindex() {
+            const btn = event.target.closest('button');
+            const oldText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Scanning...';
+
+            const startTime = performance.now();
+            try {
+                const result = await window.go.main.App.ReindexIncremental();
+                const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+
+                if (result.success) {
+                    const msg = result.total > 0
+                        ? `✅ ${result.total} media baru ditambahkan (${elapsed}s)`
+                        : `✅ Tidak ada file baru (${elapsed}s)`;
+                    alert(msg);
+                    loadYears(); loadMonths(); loadDays(); loadTags(); loadAccounts();
+                    applyFilters();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = oldText;
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // PRUNE MISSING FILES
+        // ══════════════════════════════════════════════════════
+
+        async function runPruneMissing() {
+            if (!confirm('🧹 Hapus entry DB yang file-nya sudah tidak ada di disk?\n\n' +
+                         'Proses ini:\n' +
+                         '• Cek semua file di DB satu per satu\n' +
+                         '• Hapus entry yang file-nya sudah hilang\n' +
+                         '• Tidak mengubah file di disk\n\n' +
+                         'Lanjutkan?')) return;
+
+            const btn = event.target.closest('button');
+            const oldText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Cleaning...';
+
+            try {
+                const result = await window.go.main.App.PruneMissingFiles();
+                if (result.ok) {
+                    alert(`✅ ${result.msg}\n\n` +
+                          `Files checked: ${result.checked}\n` +
+                          `Entries removed: ${result.removed}\n` +
+                          `Elapsed: ${result.elapsed?.toFixed(1) || '?'}s`);
+                    // Refresh
+                    loadYears(); loadMonths(); loadDays(); loadTags(); loadAccounts();
+                    applyFilters();
+                } else {
+                    alert('❌ ' + (result.msg || 'Gagal prune'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = oldText;
+            }
+        }
+        
+        // ══════════════════════════════════════════════════════
+        // GROUP FILTER — load options dari DB
+        // ══════════════════════════════════════════════════════
+
+        async function loadGroupOptions() {
+            try {
+                const opts = await window.go.main.App.GetGroupOptions();
+                const select = document.getElementById('groupFilter');
+                if (!select) return;
+
+                const currentValue = select.value;
+                select.innerHTML = '<option value="0">👥 Semua Group</option>';
+
+                if (!opts || opts.length === 0) return;
+
+                const byId = {};
+                const roots = [];
+                for (const o of opts) {
+                    o.children = [];
+                    byId[o.id] = o;
+                }
+                for (const o of opts) {
+                    if (o.parent_id !== null && o.parent_id !== undefined && byId[o.parent_id]) {
+                        byId[o.parent_id].children.push(o);
+                    } else {
+                        roots.push(o);
+                    }
+                }
+
+                function render(node, depth) {
+                    const opt = document.createElement('option');
+                    opt.value = node.id;
+                    const indent = '\u00A0\u00A0'.repeat(depth);
+                    opt.textContent = indent + (node.icon || '👥') + ' ' + node.name;
+                    select.appendChild(opt);
+                    for (const c of node.children) render(c, depth + 1);
+                }
+                for (const r of roots) render(r, 0);
+
+                if (currentValue && byId[parseInt(currentValue)]) {
+                    select.value = currentValue;
+                }
+            } catch (e) {
+                console.error('Load group options error:', e);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // SIMPLIFIED FILTERS — Toggle
+        // ══════════════════════════════════════════════════════
+
+        let moreFiltersOpen = false;
+
+        function toggleMoreFilters() {
+            moreFiltersOpen = !moreFiltersOpen;
+            const panel = document.getElementById('advancedFilters');
+            const btn = document.getElementById('btnMoreFilters');
+
+            if (moreFiltersOpen) {
+                panel.style.display = 'flex';
+                btn.classList.add('active');
+            } else {
+                panel.style.display = 'none';
+                btn.classList.remove('active');
+            }
+        }
+
+        // ══════════════════════════════════════════════════════
+        // ACTIVE FILTER CHIPS
+        // ══════════════════════════════════════════════════════
+
+        function updateFilterChips() {
+            const chips = [];
+            const container = document.getElementById('filterChips');
+            const list = document.getElementById('filterChipsList');
+            if (!container || !list) return;
+
+            // Platform
+            const platform = document.getElementById('platformFilter').value;
+            if (platform && platform !== 'All') {
+                const icons = { 'Instagram': '📷', 'Twitter': '🐦', 'TikTok': '🎵' };
+                chips.push({
+                    label: `${icons[platform] || ''} ${platform}`,
+                    clear: () => {
+                        document.getElementById('platformFilter').value = 'All';
+                        onPlatformChange();
+                    }
+                });
+            }
+
+            // Group
+            const groupID = parseInt(document.getElementById('groupFilter').value);
+            if (groupID > 0) {
+                const opt = document.getElementById('groupFilter').querySelector(`option[value="${groupID}"]`);
+                if (opt) {
+                    chips.push({
+                        label: opt.textContent.replace(/^[\s\u00A0]+/, ''),
+                        clear: () => {
+                            document.getElementById('groupFilter').value = '0';
+                            applyFilters();
+                        }
+                    });
+                }
+            }
+
+            // Account
+            const account = document.getElementById('accountFilter').value;
+            if (account && account !== 'All') {
+                const display = account.includes('|') ? account.split('|')[1] : account;
+                chips.push({
+                    label: `👤 @${display}`,
+                    clear: () => {
+                        document.getElementById('accountFilter').value = 'All';
+                        applyFilters();
+                    }
+                });
+            }
+
+            // Type
+            const type = document.getElementById('typeFilter').value;
+            if (type && type !== 'All') {
+                const icons = { 'Image': '📸', 'Video': '🎬' };
+                chips.push({
+                    label: `${icons[type] || ''} ${type}`,
+                    clear: () => {
+                        document.getElementById('typeFilter').value = 'All';
+                        applyFilters();
+                    }
+                });
+            }
+
+            // Sort (hanya tampil kalau bukan default)
+            const sort = document.getElementById('sortFilter').value;
+            if (sort && sort !== 'newest') {
+                chips.push({
+                    label: '⬆️ Terlama',
+                    clear: () => {
+                        document.getElementById('sortFilter').value = 'newest';
+                        applyFilters();
+                    }
+                });
+            }
+
+            // Year
+            const year = document.getElementById('yearFilter').value;
+            if (year && year !== 'All') {
+                chips.push({
+                    label: `📅 ${year}`,
+                    clear: () => {
+                        document.getElementById('yearFilter').value = 'All';
+                        onYearChange();
+                    }
+                });
+            }
+
+            // Month
+            const month = document.getElementById('monthFilter').value;
+            if (month && month !== 'All') {
+                chips.push({
+                    label: `📆 ${getMonthName(month)}`,
+                    clear: () => {
+                        document.getElementById('monthFilter').value = 'All';
+                        onMonthChange();
+                    }
+                });
+            }
+
+            // Day
+            const day = document.getElementById('dayFilter').value;
+            if (day && day !== 'All') {
+                chips.push({
+                    label: `📅 ${parseInt(day)}`,
+                    clear: () => {
+                        document.getElementById('dayFilter').value = 'All';
+                        applyFilters();
+                    }
+                });
+            }
+
+            // Tag
+            const tag = selectedTag || document.getElementById('tagFilter').value;
+            if (tag) {
+                chips.push({
+                    label: `🏷️ #${tag}`,
+                    clear: () => {
+                        selectedTag = '';
+                        document.getElementById('tagFilter').value = '';
+                        updateTagIndicator('');
+                        applyFilters();
+                    }
+                });
+            }
+
+            // Search
+            const search = document.getElementById('searchInput').value.trim();
+            if (search) {
+                chips.push({
+                    label: `🔍 "${search}"`,
+                    clear: () => {
+                        document.getElementById('searchInput').value = '';
+                        applyFilters();
+                    }
+                });
+            }
+
+            if (chips.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'flex';
+            list.innerHTML = '';
+            chips.forEach(c => {
+                const el = document.createElement('span');
+                el.className = 'filter-chip';
+                el.innerHTML = `${escapeHtml(c.label)} <span class="chip-close">×</span>`;
+                el.onclick = c.clear;
+                list.appendChild(el);
+            });
+        }
+
+        // ══════════════════════════════════════════════════════
+        // HOOK — Auto-update chips saat filter berubah
+        // ══════════════════════════════════════════════════════
+
+        const _originalApplyFilters = applyFilters;
+        applyFilters = function() {
+            _originalApplyFilters();
+            setTimeout(updateFilterChips, 50);
+        };
+
+        const _originalResetFilters = resetFilters;
+        resetFilters = function() {
+            _originalResetFilters();
+            setTimeout(updateFilterChips, 50);
+        };
+
+        const _originalFilterByTag = filterByTag;
+        filterByTag = function(e, tag) {
+            _originalFilterByTag(e, tag);
+            setTimeout(updateFilterChips, 50);
+        };
+    </script>
+</body>
+</html>

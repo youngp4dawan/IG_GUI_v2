@@ -1,6 +1,6 @@
-# Tulis ulang pakai PowerShell (tanpa BOM)
-@'
-# Python
+# ═══════════════════════════════════════════════════════════
+# PYTHON
+# ═══════════════════════════════════════════════════════════
 __pycache__/
 *.py[cod]
 *.so
@@ -8,8 +8,13 @@ __pycache__/
 venv/
 env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 
-# Data
+# ═══════════════════════════════════════════════════════════
+# DATA (runtime — jangan commit)
+# ═══════════════════════════════════════════════════════════
 Download/
 data/
 logs/
@@ -19,43 +24,79 @@ logs/
 *.sqlite
 *.sqlite3
 
-# Config
+# ═══════════════════════════════════════════════════════════
+# CONFIG (berisi cookies & credentials)
+# ═══════════════════════════════════════════════════════════
 config/*.json
 !config/*.example.json
 paths.txt
 cookies.txt
 *.cookies
 
-# Wails
-website-wails/build/bin/
-website-wails/build/windows/
-website-wails/frontend/node_modules/
-website-wails/frontend/dist/
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# ═══════════════════════════════════════════════════════════
+# WAILS — PYTHON SIDE (jika ada tools Python tambahan)
+# ═══════════════════════════════════════════════════════════
+website-wails/*.db
+website-wails/*.db-wal
+website-wails/*.db-shm
+website-wails/*.log
+website-wails/*.exe
+website-wails/*.exe~
+website-wails/*.dll
+website-wails/*.so
+website-wails/*.dylib
 
-# Logs/temp
+# Wails — build output (jangan commit)
+website-wails/build/bin/
+website-wails/frontend/dist/
+website-wails/frontend/node_modules/
+
+# Wails — generated runtime shim (bisa di-regen)
+website-wails/frontend/wailsjs/runtime/
+
+# Wails — keep source assets & metadata
+!website-wails/build/appicon.png
+!website-wails/build/windows/
+!website-wails/build/darwin/
+!website-wails/build/linux/
+
+# ═══════════════════════════════════════════════════════════
+# GO (di dalam website-wails)
+# ═══════════════════════════════════════════════════════════
+website-wails/*.test
+website-wails/*.out
+website-wails/vendor/
+
+# ═══════════════════════════════════════════════════════════
+# OS FILES
+# ═══════════════════════════════════════════════════════════
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ═══════════════════════════════════════════════════════════
+# IDE / EDITOR
+# ═══════════════════════════════════════════════════════════
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-*
+
+# ═══════════════════════════════════════════════════════════
+# LOGS & TEMP
+# ═══════════════════════════════════════════════════════════
 *.log
 *.bak
 *.tmp
 *.swp
+*.swo
 debug_fb_result.txt
 
-# OS
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# IDE
-.vscode/
-.idea/
-*.code-workspace
-
-# Debug scripts
+# ═══════════════════════════════════════════════════════════
+# DEBUG / SCRATCH SCRIPTS (boleh dihapus, bukan source utama)
+# ═══════════════════════════════════════════════════════════
 debug_*.py
 test_*.py
 !tests/
-'@ | Out-File -Encoding ascii .gitignore
+!test_*.py.example
