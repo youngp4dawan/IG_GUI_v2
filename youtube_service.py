@@ -107,14 +107,27 @@ class QueueWorker:
                 SET status = ?,
                     youtube_url = ?,
                     error = ?,
-                    attempts = attempts + 1,
+                    attempts = CASE WHEN ? = 'uploading'
+                                    THEN attempts + 1 ELSE attempts END,
                     started_at = CASE WHEN ? = 'uploading'
-                                      THEN datetime('now') ELSE started_at END,
+                                    THEN datetime('now') ELSE started_at END,
                     finished_at = CASE WHEN ? IN ('done','failed')
-                                       THEN datetime('now') ELSE finished_at END
+                                    THEN datetime('now') ELSE finished_at END
                 WHERE id = ?
-            """, (status, url, error, status, status, item_id))
+            """, (status, url, error, status, status, status, item_id))
 
+    def get_custom_hashtags(self):
+        try:
+            with self.conn() as c:
+                row = c.execute(
+                    "SELECT value FROM app_settings WHERE key=?",
+                    ("youtube_custom_hashtags",)
+                ).fetchone()
+                return (row[0] or "").strip() if row else ""
+        except Exception as e:
+            print(f"⚠️  Gagal baca hashtags: {str(e)[:100]}", flush=True)
+            return ""
+    
     def _ensure_driver(self):
         if getattr(self.uploader, "driver", None) is None:
             print("🔌 Connect ke Chrome debug...", flush=True)
@@ -166,16 +179,53 @@ class QueueWorker:
                 print(f"❌ Auto-launch error: {str(e)[:150]}", flush=True)
                 return
 
-        print("🔍 Cek koneksi Chrome debug + login YouTube...", flush=True)
-        try:
-            logged_in = self.uploader.check_login()
+            print("🔍 Cek koneksi Chrome debug + login YouTube...", flush=True)
+            logged_in = False
+            try:
+                logged_in = self.uploader.check_login()
+            except Exception as e:
+                print(f"⚠️  Cek login error: {str(e)[:150]}", flush=True)
+
+            # ═══════════════════════════════════════════════════════
+            # ⚡ Login gagal → JANGAN consume queue. Tunggu user login.
+            # ═══════════════════════════════════════════════════════
             if not logged_in:
                 print("", flush=True)
-                print("⚠️  Login YouTube gagal / belum login.", flush=True)
-                print("   Login dulu di Chrome, lalu jalankan ulang worker.", flush=True)
+                print("=" * 60, flush=True)
+                print("⚠️  Login YouTube belum valid.", flush=True)
+                print("=" * 60, flush=True)
+                print("   Worker DIPENDING — tidak akan memproses queue", flush=True)
+                print("   sampai login berhasil.", flush=True)
                 print("", flush=True)
-        except Exception as e:
-            print(f"⚠️  Cek login error: {str(e)[:150]}", flush=True)
+                print("   ➜ Buka Chrome yang sedang terbuka", flush=True)
+                print("   ➜ Login YouTube di sana", flush=True)
+                print("   ➜ JANGAN tutup Chrome", flush=True)
+                print("   ➜ Worker akan otomatis lanjut setelah login terdeteksi", flush=True)
+                print("", flush=True)
+
+                wait_count = 0
+                while not self.stop:
+                    if not self.chrome_alive():
+                        print("🛑 Chrome ditutup — worker berhenti", flush=True)
+                        return
+
+                    time.sleep(15)
+                    wait_count += 15
+
+                    try:
+                        if self.uploader.check_login():
+                            print(f"✅ Login terdeteksi ({wait_count}s) — lanjut!", flush=True)
+                            logged_in = True
+                            break
+                    except Exception as e:
+                        print(f"   ⚠️  Cek ulang error: {str(e)[:100]}", flush=True)
+
+                    if wait_count % 60 == 0:
+                        print(f"   ⏳ Menunggu login... ({wait_count}s)", flush=True)
+
+                if self.stop:
+                    print("⏸️  Stop signal — worker berhenti", flush=True)
+                    return
 
         idle_count = 0
         while not self.stop:
@@ -223,12 +273,18 @@ class QueueWorker:
                 self._ensure_driver()
                 tags = json.loads(tags_json) if tags_json else []
 
+                # ⚡ NEW: baca custom hashtags (live, tidak perlu restart worker)
+                custom_hashtags = self.get_custom_hashtags()
+                if custom_hashtags:
+                    print(f"   🏷️  Custom hashtags: {custom_hashtags}", flush=True)
+
                 ok = self.uploader._upload_one(
                     path,
                     title=title,
                     description=desc,
                     tags=tags,
                     privacy=privacy,
+                    custom_hashtags=custom_hashtags,
                 )
 
                 if ok:

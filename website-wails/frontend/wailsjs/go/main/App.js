@@ -86,6 +86,10 @@ export function GetYears() {
   return window['go']['main']['App']['GetYears']();
 }
 
+export function GetYouTubeHashtags() {
+  return window['go']['main']['App']['GetYouTubeHashtags']();
+}
+
 export function GetYouTubeQueue(arg1) {
   return window['go']['main']['App']['GetYouTubeQueue'](arg1);
 }
@@ -136,6 +140,10 @@ export function RetryFailedQueue() {
 
 export function SaveVideoThumbnail(arg1, arg2) {
   return window['go']['main']['App']['SaveVideoThumbnail'](arg1, arg2);
+}
+
+export function SetYouTubeHashtags(arg1) {
+  return window['go']['main']['App']['SetYouTubeHashtags'](arg1);
 }
 
 export function StartGroupDownload(arg1, arg2) {

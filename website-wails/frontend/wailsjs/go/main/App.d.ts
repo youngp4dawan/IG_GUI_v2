@@ -44,6 +44,8 @@ export function GetTranslationCacheStats():Promise<Record<string, any>>;
 
 export function GetYears():Promise<Array<string>>;
 
+export function GetYouTubeHashtags():Promise<string>;
+
 export function GetYouTubeQueue(arg1:string):Promise<Array<main.QueueItem>>;
 
 export function GetYouTubeQueueStats():Promise<main.QueueStats>;
@@ -69,6 +71,8 @@ export function RemoveQueueItem(arg1:number):Promise<void>;
 export function RetryFailedQueue():Promise<number>;
 
 export function SaveVideoThumbnail(arg1:string,arg2:string):Promise<string>;
+
+export function SetYouTubeHashtags(arg1:string):Promise<Record<string, any>>;
 
 export function StartGroupDownload(arg1:number,arg2:Array<string>):Promise<Record<string, any>>;
 

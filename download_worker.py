@@ -255,7 +255,6 @@ class DownloadWorker:
         use_archive = bool(self.config.get("use_archive", True))
         max_workers = int(self.config.get("max_workers", 1))
 
-        # Facebook input = URL, IG/TikTok = username
         if platform == "facebook":
             items = [u.strip() for u in usernames if u and u.strip().startswith("http")]
             items = list(dict.fromkeys(items))
@@ -274,7 +273,6 @@ class DownloadWorker:
             print("❌ Tidak ada item yang valid", flush=True)
             return
 
-        # COOKIE HEALTH CHECK
         cookie_ok, cookie_msg = self.check_cookies(platform)
         if not cookie_ok:
             print("", flush=True)
@@ -408,13 +406,23 @@ class DownloadWorker:
 
     # ─── TIKTOK ───
     def _download_tt_user(self, username, quality="hd", use_archive=True):
-        from tiktok.downloader import TikTokDownloader
+        from tiktok.downloader import (
+            TikTokDownloader,
+            _resolve_effective_url,
+        )
 
         print(f"   🎵 TikTok: @{username}", flush=True)
 
         url = TikTokDownloader.normalize_url("@" + username)
-        exists_before, count_before, _ = TikTokDownloader.get_archive_info(url)
-        print(f"      📚 Archive: {count_before} video", flush=True)
+
+        # ⚡ Resolve sec_uid cache untuk archive counter yang konsisten
+        effective_url, uname = _resolve_effective_url(url)
+
+        exists_before, count_before, _ = TikTokDownloader.get_archive_info(effective_url)
+        if effective_url != url:
+            print(f"      🎯 Pakai sec_uid cache (archive: {count_before})", flush=True)
+        else:
+            print(f"      📚 Archive: {count_before} video", flush=True)
 
         ok = TikTokDownloader.download(
             url,
@@ -423,7 +431,7 @@ class DownloadWorker:
             on_log=lambda m: print(f"      {m}", flush=True),
         )
 
-        exists_after, count_after, _ = TikTokDownloader.get_archive_info(url)
+        exists_after, count_after, _ = TikTokDownloader.get_archive_info(effective_url)
         new_found = max(0, count_after - count_before)
         print(f"      ✅ Baru: {new_found} video", flush=True)
 
@@ -447,7 +455,6 @@ class DownloadWorker:
         # ═══ 1. ENUMERATE ═══
         print(f"      🔍 Enumerate video dari Page...", flush=True)
 
-        # ⚡ Coba headless=True dulu
         driver = FacebookEnumerator.create_driver(headless=True)
         try:
             FacebookEnumerator.setup_with_cookies(driver, cfg)
@@ -622,18 +629,28 @@ class DownloadWorker:
         return True, len(new_codes), len(new_codes)
 
     def _process_group_tt(self, username):
-        from tiktok.downloader import TikTokDownloader
+        from tiktok.downloader import (
+            TikTokDownloader,
+            _resolve_effective_url,
+        )
 
         url = TikTokDownloader.normalize_url("@" + username)
-        exists_before, count_before, _ = TikTokDownloader.get_archive_info(url)
-        print(f"      📚 Archive: {count_before} video", flush=True)
+
+        # ⚡ Resolve sec_uid cache
+        effective_url, uname = _resolve_effective_url(url)
+
+        exists_before, count_before, _ = TikTokDownloader.get_archive_info(effective_url)
+        if effective_url != url:
+            print(f"      🎯 Pakai sec_uid cache (archive: {count_before})", flush=True)
+        else:
+            print(f"      📚 Archive: {count_before} video", flush=True)
 
         ok = TikTokDownloader.download(
             url, quality="hd", use_archive=True,
             on_log=lambda m: print(f"      {m}", flush=True),
         )
 
-        exists_after, count_after, _ = TikTokDownloader.get_archive_info(url)
+        exists_after, count_after, _ = TikTokDownloader.get_archive_info(effective_url)
         new_found = max(0, count_after - count_before)
         print(f"      Baru: {new_found} video", flush=True)
         return bool(ok), new_found, new_found

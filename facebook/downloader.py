@@ -64,9 +64,26 @@ class FacebookDownloader:
         )
 
         if quality == "hd":
-            fmt = "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+            # ⚡ FIX: handle portrait (Reels) — filter by width ATAU height
+            # Portrait 1080x1920: width=1080 ✓, height=1920 (>1080 tapi valid)
+            # Landscape 1920x1080: width=1920, height=1080 ✓
+            fmt = (
+                "bestvideo[height<=1920][width<=1080]+bestaudio/"  # portrait HD
+                "bestvideo[height<=1080][width<=1920]+bestaudio/"  # landscape HD
+                "bestvideo[height<=1920]+bestaudio/"               # fallback
+                "bestvideo+bestaudio/"                              # last resort
+                "best"
+            )
+        elif quality == "sd":
+            fmt = (
+                "bestvideo[height<=1280][width<=720]+bestaudio/"
+                "bestvideo[height<=720][width<=1280]+bestaudio/"
+                "bestvideo[height<=1280]+bestaudio/"
+                "bestvideo+bestaudio/"
+                "best"
+            )
         else:
-            fmt = "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+            fmt = "best"
 
         cmd = [
             "yt-dlp",

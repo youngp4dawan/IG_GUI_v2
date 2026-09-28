@@ -1,6 +1,7 @@
 """TikTok downloader via yt-dlp (highest resolution + no watermark + thumbnail + multi-user)."""
 import os
 import re
+import json
 import shutil
 import subprocess
 import threading
@@ -12,6 +13,7 @@ from tiktok.config import TikTokConfig
 YTDLP_AVAILABLE = shutil.which("yt-dlp") is not None
 
 ARCHIVE_DIR = os.path.join(DATA_TIKTOK, "archive")
+SEC_UID_CACHE = os.path.join(DATA_TIKTOK, "sec_uid_cache.json")
 
 SKIP_PATTERNS = [
     "IP address is blocked",
@@ -24,6 +26,44 @@ SKIP_PATTERNS = [
 ]
 
 
+# ══════════════════════════════════════════════════════════
+# SEC_UID CACHE HELPERS
+# ══════════════════════════════════════════════════════════
+
+def _load_sec_uid_cache():
+    """Load mapping username → sec_uid. Return {} kalau tidak ada."""
+    try:
+        if os.path.exists(SEC_UID_CACHE):
+            with open(SEC_UID_CACHE, "r", encoding="utf-8") as f:
+                return json.load(f) or {}
+    except Exception:
+        pass
+    return {}
+
+
+def _extract_username_from_url(url):
+    """Ambil username TikTok dari URL profile. Return None kalau tidak match."""
+    m = re.search(r"tiktok\.com/@([A-Za-z0-9_.]+)", url)
+    return m.group(1) if m else None
+
+
+def _resolve_effective_url(url):
+    """
+    Kalau username ada di sec_uid cache, return 'tiktokuser:SEC_UID'.
+    Kalau tidak, return url asli.
+    """
+    username = _extract_username_from_url(url)
+    if username:
+        cache = _load_sec_uid_cache()
+        if username in cache:
+            return f"tiktokuser:{cache[username]}", username
+    return url, username
+
+
+# ══════════════════════════════════════════════════════════
+# DOWNLOADER
+# ══════════════════════════════════════════════════════════
+
 class TikTokDownloader:
 
     # ══════════════════════════════════════════════════════
@@ -34,7 +74,6 @@ class TikTokDownloader:
         s = s.strip()
         if not s:
             return s
-        # buang query & trailing slash
         s = s.split("?")[0].rstrip("/")
         if s.startswith("http://") or s.startswith("https://"):
             return s
@@ -47,21 +86,9 @@ class TikTokDownloader:
     # ══════════════════════════════════════════════════════
     @staticmethod
     def parse_multiple(text):
-        """
-        Parse input multiple user/URL.
-        Support separator: newline, koma, titik-koma, spasi, pipe (|)
-        Contoh:
-            @user1, @user2
-            @user1
-            @user2
-            https://tiktok.com/@user1 ; user2 | user3
-        Return: list of unique URLs (normalized).
-        """
         if not text:
             return []
-
         parts = re.split(r"[\n,;|\s]+", text.strip())
-
         seen = set()
         urls = []
         for p in parts:
@@ -87,19 +114,27 @@ class TikTokDownloader:
         m = re.search(r"tiktok\.com/@([A-Za-z0-9_.]+)", url)
         if m:
             return m.group(1)
+        m = re.search(r"tiktokuser:([A-Za-z0-9_.\-]+)", url)
+        if m:
+            return m.group(1)
         m = re.search(r"/video/(\d+)", url)
         if m:
             return f"_video_{m.group(1)}"
         return "_misc"
 
     @staticmethod
-    def get_archive_path(url):
+    def get_archive_path(url, username_hint=None):
+        """
+        Path archive. username_hint memastikan archive tetap konsisten
+        meskipun URL sudah di-resolve ke format tiktokuser:SEC_UID.
+        """
         ensure_dirs(ARCHIVE_DIR)
-        return os.path.join(ARCHIVE_DIR, f"{TikTokDownloader.extract_username(url)}.txt")
+        name = username_hint or TikTokDownloader.extract_username(url)
+        return os.path.join(ARCHIVE_DIR, f"{name}.txt")
 
     @staticmethod
-    def get_archive_info(url):
-        path = TikTokDownloader.get_archive_path(url)
+    def get_archive_info(url, username_hint=None):
+        path = TikTokDownloader.get_archive_path(url, username_hint)
         if not os.path.exists(path):
             return False, 0, path
         try:
@@ -110,8 +145,8 @@ class TikTokDownloader:
             return False, 0, path
 
     @staticmethod
-    def reset_archive(url):
-        path = TikTokDownloader.get_archive_path(url)
+    def reset_archive(url, username_hint=None):
+        path = TikTokDownloader.get_archive_path(url, username_hint)
         if os.path.exists(path):
             try:
                 os.remove(path)
@@ -124,13 +159,7 @@ class TikTokDownloader:
     # BUILD COMMAND
     # ══════════════════════════════════════════════════════
     @staticmethod
-    def build_cmd(url, quality="hd", use_archive=True):
-        """
-        Format priority:
-        - NO WATERMARK (h264_*, h265_*, bytevc1_* — bukan download/download_hd)
-        - RESOLUSI TERTINGGI dulu (1080p > 720p)
-        - Codec apapun (h264/h265/bytevc1) — yang penting no watermark
-        """
+    def build_cmd(url, quality="hd", use_archive=True, username_hint=None):
         tpl = os.path.join(DOWNLOAD_TIKTOK, "%(uploader)s", "%(id)s_%(title).60s.%(ext)s")
 
         if quality == "hd":
@@ -180,7 +209,10 @@ class TikTokDownloader:
         ]
 
         if use_archive:
-            cmd.extend(["--download-archive", TikTokDownloader.get_archive_path(url)])
+            cmd.extend([
+                "--download-archive",
+                TikTokDownloader.get_archive_path(url, username_hint)
+            ])
 
         if os.path.exists(TIKTOK_COOKIES):
             cmd.extend(["--cookies", TIKTOK_COOKIES])
@@ -208,8 +240,11 @@ class TikTokDownloader:
 
         ensure_dirs(DOWNLOAD_TIKTOK)
 
+        # ⚡ Resolve effective URL (sec_uid cache)
+        effective_url, username = _resolve_effective_url(url)
+
         if use_archive:
-            exists, count, _ = TikTokDownloader.get_archive_info(url)
+            exists, count, _ = TikTokDownloader.get_archive_info(effective_url, username)
             if exists and count > 0:
                 on_log(f"📚 Archive: {count} video sudah pernah didownload")
                 on_log(f"   → Video lama akan otomatis di-skip")
@@ -220,7 +255,14 @@ class TikTokDownloader:
         ok, msg = config.generate_netscape()
         on_log(f"🍪 Cookies: {msg}" if ok else f"⚠️  {msg}")
 
-        cmd = TikTokDownloader.build_cmd(url, quality, use_archive=use_archive)
+        if effective_url != url:
+            on_log(f"   🎯 Pakai sec_uid cache untuk @{username}")
+
+        cmd = TikTokDownloader.build_cmd(
+            effective_url, quality,
+            use_archive=use_archive,
+            username_hint=username,
+        )
         on_log("🔧 Running yt-dlp...")
         on_log("🔍 Format: highest resolution, no watermark")
         on_log("")
@@ -283,7 +325,7 @@ class TikTokDownloader:
                 if "has already been recorded in the archive" in low or \
                    "has already been downloaded" in low:
                     stats["skipped_archive"] += 1
-                    on_log(f"   ⏭️  Sudah pernah didownload")
+                    # on_log(f"   ⏭️  Sudah pernah didownload")
                     continue
 
                 if "[download] 100%" in line:
@@ -322,7 +364,7 @@ class TikTokDownloader:
             on_log("=" * 55)
 
             if use_archive:
-                exists, total, _ = TikTokDownloader.get_archive_info(url)
+                exists, total, _ = TikTokDownloader.get_archive_info(effective_url, username)
                 if exists:
                     on_log(f"📚 Total archive: {total} video")
 
@@ -357,12 +399,6 @@ class TikTokDownloader:
     @staticmethod
     def download_multiple(users_text, quality="hd", use_archive=True,
                           stop_event=None, on_log=None, on_progress=None):
-        """
-        Download multiple user/URL sekaligus.
-        - users_text : string mentah dari input (multi-baris / koma / dll)
-        - on_log     : callback (message:str)
-        - on_progress: callback (progress_global:float 0..1, message:str)
-        """
         stop_event = stop_event or threading.Event()
         on_log = on_log or (lambda m: None)
         on_progress = on_progress or (lambda p, m: None)
@@ -389,7 +425,6 @@ class TikTokDownloader:
                 on_log("⏸️ Dihentikan oleh user")
                 break
 
-            # progress global diskalakan per target
             base = (idx - 1) / total
             span = 1 / total
 
@@ -417,7 +452,6 @@ class TikTokDownloader:
             results.append((url, ok))
             on_log(f"{'✅' if ok else '❌'} Selesai [{idx}/{total}]: {url}")
 
-        # ── summary akhir ──
         ok_count = sum(1 for _, ok in results if ok)
         fail_count = len(results) - ok_count
 

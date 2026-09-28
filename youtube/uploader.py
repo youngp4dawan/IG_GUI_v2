@@ -412,6 +412,8 @@ class YouTubeUploader:
                         description=video.get("description"),
                         tags=video.get("tags"),
                         privacy=video.get("privacy") or self.config.privacy,
+                        username=source_username or video.get("username") or "",
+                        source=source_platform or video.get("platform") or "",
                     )
                     if ok:
                         success += 1
@@ -449,18 +451,42 @@ class YouTubeUploader:
     # ══════════════════════════════════════════════════════
     # UPLOAD ONE
     # ══════════════════════════════════════════════════════
-    def _upload_one(self, filepath, title=None, description=None, tags=None, privacy=None):
+    def _upload_one(self, filepath, title=None, description=None, tags=None,
+                    privacy=None, custom_hashtags=None):
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support.ui import WebDriverWait
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.webdriver.common.keys import Keys
 
+        # ═══════════════════════════════════════════════════════
+        # TITLE: fallback → hashtags
+        # ═══════════════════════════════════════════════════════
         if not title:
             raw_name = Path(filepath).stem
             title = _clean_title_from_filename(raw_name)
             if len(title) > 100:
                 title = title[:100]
-            self.on_log(f"   📝 Title: {title[:70]}")
+
+        if custom_hashtags and custom_hashtags.strip():
+            hashtag_str = custom_hashtags.strip()
+            if not hashtag_str.startswith("#"):
+                hashtag_str = "#" + hashtag_str
+
+            suffix = " " + hashtag_str
+            max_title_len = 100 - len(suffix)
+
+            if max_title_len < 10:
+                self.on_log(f"   ⚠️  Hashtag terlalu panjang, skip append")
+            else:
+                if len(title) > max_title_len:
+                    title = title[:max_title_len].rstrip()
+                title = title + suffix
+                self.on_log(f"   🏷️  Title with hashtags: {title[:90]}")
+
+        if len(title) > 100:
+            title = title[:100]
+
+        self.on_log(f"   📝 Final title: {title[:90]}")
 
         if not description:
             description = self.config.description_template
@@ -468,6 +494,9 @@ class YouTubeUploader:
             tags = self.config.tags
         privacy = privacy or self.config.privacy
 
+        # ═══════════════════════════════════════════════════════
+        # [1/8] Buka upload page
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [1/8] Buka upload page...")
         self.driver.get("https://www.youtube.com/upload")
         time.sleep(6)
@@ -497,26 +526,58 @@ class YouTubeUploader:
         self.on_log("   [2/8] Tunggu editor...")
         time.sleep(8)
 
+        # ═══════════════════════════════════════════════════════
+        # [3/8] Set title
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [3/8] Set title & description...")
-        try:
-            wait = WebDriverWait(self.driver, 60)
-            title_box = wait.until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "#textbox[contenteditable='true']")
+        title_set = False
+
+        for attempt in range(3):
+            try:
+                wait = WebDriverWait(self.driver, 30)
+                title_box = wait.until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "#textbox[contenteditable='true']")
+                    )
                 )
-            )
-            title_box.click()
-            time.sleep(0.5)
-            title_box.send_keys(Keys.CONTROL + "a")
-            title_box.send_keys(Keys.DELETE)
-            time.sleep(0.3)
-            title_box.send_keys(title[:100])
-            self.on_log(f"   ✅ Title diset")
-        except Exception as e:
-            self.on_log(f"   ⚠️ Title: {str(e)[:80]}")
+                self.driver.execute_script(
+                    "arguments[0].scrollIntoView({block: 'center'});", title_box
+                )
+                time.sleep(0.5)
 
+                try:
+                    title_box.click()
+                except Exception:
+                    self.driver.execute_script("arguments[0].focus();", title_box)
+
+                time.sleep(0.5)
+                title_box.send_keys(Keys.CONTROL + "a")
+                time.sleep(0.2)
+                title_box.send_keys(Keys.DELETE)
+                time.sleep(0.3)
+                title_box.send_keys(title[:100])
+                time.sleep(0.5)
+
+                actual = (title_box.text or
+                          title_box.get_attribute("textContent") or "")
+                if len(actual.strip()) > 5:
+                    self.on_log(f"   ✅ Title diset (attempt {attempt+1})")
+                    title_set = True
+                    break
+                else:
+                    self.on_log(f"   ⚠️  Title tidak verified, retry {attempt+1}/3")
+                    time.sleep(2)
+
+            except Exception as e:
+                self.on_log(f"   ⚠️  Title attempt {attempt+1}: {str(e)[:80]}")
+                time.sleep(2)
+
+        if not title_set:
+            self.on_log("   ❌ Title GAGAL diset setelah 3 percobaan")
+            return False
+
+        # Description
         time.sleep(1)
-
         try:
             desc_box = self.driver.find_element(
                 By.CSS_SELECTOR, "#description-textbox[contenteditable='true']"
@@ -532,17 +593,26 @@ class YouTubeUploader:
 
         time.sleep(1)
 
+        # ═══════════════════════════════════════════════════════
+        # [4/8] Made for kids
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [4/8] Set 'Made for kids'...")
         self._close_popups()
         self._set_made_for_kids(made_for_kids=False)
         time.sleep(2)
 
+        # ═══════════════════════════════════════════════════════
+        # [5/8] Next → Video elements
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [5/8] Next → Video elements...")
         if not self._click_next_with_retry(max_retries=5, retry_delay=3):
             self.on_log("   ⚠️ Next disabled")
             return False
         time.sleep(2)
 
+        # ═══════════════════════════════════════════════════════
+        # [6/8] Next → Checks
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [6/8] Next → Checks...")
         self._close_popups()
         if not self._click_next_with_retry(max_retries=5, retry_delay=3):
@@ -550,9 +620,15 @@ class YouTubeUploader:
             return False
         time.sleep(2)
 
+        # ═══════════════════════════════════════════════════════
+        # [7/8] Tunggu Checks
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [7/8] Tunggu Checks...")
         self._wait_for_checks_complete(max_wait_seconds=600)
 
+        # ═══════════════════════════════════════════════════════
+        # [8/8] Next → Visibility
+        # ═══════════════════════════════════════════════════════
         self.on_log("   [8/8] Next → Visibility...")
         self._close_popups()
         if not self._click_next_with_retry(max_retries=5, retry_delay=3):
@@ -563,7 +639,6 @@ class YouTubeUploader:
         self.on_log("   Set privacy...")
         time.sleep(2)
         self._close_popups()
-
         self._set_made_for_kids(made_for_kids=False)
         time.sleep(2)
         self._close_popups()
@@ -578,95 +653,176 @@ class YouTubeUploader:
         time.sleep(2)
         self._click_publish()
 
-        # ══════════════════════════════════════════════════
-        # ⚡ FIX: Tunggu konfirmasi maks 60s + klik Close
-        # (jangan tunggu processing selesai — itu urusan server YT)
-        # ══════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════
+        # Tunggu dialog — terima 2 jenis dialog
+        # ═══════════════════════════════════════════════════════
         self.on_log("   Tunggu dialog konfirmasi...")
         publish_confirmed = False
 
-        for i in range(30):
+        time.sleep(5)   # Force minimal tunggu
+
+        for i in range(60):
             if self.stop_event.is_set():
                 return False
             time.sleep(2)
+
+            # ⚡ Deteksi 2 dialog: "Video published" ATAU "Video processing"
             try:
-                body = self.driver.page_source.lower()
-
-                success_markers = [
-                    "video published",
-                    "video saved",
-                    "video processing",
-                    "your video is being processed",
-                    "publishing",
-                    "checks complete",
-                ]
-                if any(m in body for m in success_markers):
-                    publish_confirmed = True
-                    self.on_log(f"   ✅ Dialog terdeteksi ({i*2}s)")
-                    break
-
-                try:
-                    url = self.driver.current_url.lower()
-                    if "studio.youtube.com" in url and "/video/" in url:
-                        publish_confirmed = True
-                        self.on_log("   ✅ Redirect ke video page")
-                        break
-                except Exception:
-                    pass
-
-                try:
-                    close_btn = self.driver.find_element(
-                        By.XPATH,
-                        "//ytcp-button[contains(., 'Close')] | "
-                        "//tp-yt-paper-button[contains(., 'Close')] | "
-                        "//button[contains(., 'Close')]"
-                    )
-                    if close_btn.is_displayed():
-                        publish_confirmed = True
-                        self.on_log("   ✅ Tombol Close terdeteksi")
-                        break
-                except Exception:
-                    pass
-
-            except Exception as e:
-                self.on_log(f"   ⚠️  Cek error: {str(e)[:80]}")
-
-        if not publish_confirmed:
-            self.on_log("   ⚠️  Tidak yakin upload selesai (timeout 60s), tapi lanjut")
-
-        # ⚡ Klik Close
-        self.on_log("   Tutup dialog...")
-        try:
-            closed = False
-            for _ in range(5):
-                close_btns = self.driver.find_elements(
+                dialog_headings = self.driver.find_elements(
                     By.XPATH,
-                    "//ytcp-button[contains(., 'Close')] | "
-                    "//tp-yt-paper-button[contains(., 'Close')] | "
-                    "//button[contains(., 'Close')] | "
-                    "//ytcp-button[@id='close-button']"
+                    "//*[contains(text(), 'Video published')] | "
+                    "//*[contains(text(), 'Video processing')]"
                 )
-                for btn in close_btns:
-                    try:
-                        if btn.is_displayed() and btn.is_enabled():
+                visible = [h for h in dialog_headings
+                          if h.is_displayed() and h.text.strip() in
+                          ("Video published", "Video processing")]
+                if visible:
+                    dialog_title = visible[0].text.strip()
+                    publish_confirmed = True
+                    self.on_log(f"   ✅ Dialog '{dialog_title}' ({(i+1)*2+5}s)")
+                    break
+            except Exception:
+                pass
+
+            # Fallback: URL redirect
+            try:
+                url = self.driver.current_url.lower()
+                if "studio.youtube.com" in url and "/video/" in url:
+                    publish_confirmed = True
+                    self.on_log("   ✅ Redirect ke video page — published!")
+                    break
+            except Exception:
+                pass
+
+            if i > 0 and i % 15 == 0:
+                self.on_log(f"   ⏳ Menunggu publish... ({i*2}s)")
+
+        # ═══════════════════════════════════════════════════════
+        # Close dialog — Multi-Strategy (JS + XPath + ESC)
+        # ═══════════════════════════════════════════════════════
+        if not publish_confirmed:
+            self.on_log("   ⚠️  Dialog tidak terdeteksi — skip Close")
+        else:
+            self.on_log("   Tutup dialog...")
+            closed = False
+
+            for attempt in range(10):
+                # Strategi 1: JS scan semua elemen text "Close" di dalam dialog
+                try:
+                    clicked = self.driver.execute_script("""
+                        var all = document.querySelectorAll('*');
+                        for (var i = 0; i < all.length; i++) {
+                            var el = all[i];
+                            var txt = (el.textContent || '').trim();
+                            if (txt === 'Close' && el.children.length === 0) {
+                                var parent = el;
+                                var inDialog = false;
+                                while (parent && parent !== document.body) {
+                                    var role = parent.getAttribute && parent.getAttribute('role');
+                                    var tag = (parent.tagName || '').toLowerCase();
+                                    if (role === 'dialog' ||
+                                        tag === 'tp-yt-paper-dialog' ||
+                                        tag === 'ytcp-uploads-dialog') {
+                                        inDialog = true;
+                                        break;
+                                    }
+                                    parent = parent.parentElement;
+                                }
+                                if (inDialog && el.offsetParent !== null) {
+                                    var clickable = el.closest(
+                                        'button, ytcp-button, tp-yt-paper-button, [role="button"]'
+                                    );
+                                    if (clickable) {
+                                        clickable.click();
+                                        return 'clicked-via-ancestor';
+                                    }
+                                    el.click();
+                                    return 'clicked-direct';
+                                }
+                            }
+                        }
+                        return null;
+                    """)
+                    if clicked:
+                        self.on_log(f"   ✅ Dialog closed (attempt {attempt+1}, {clicked})")
+                        closed = True
+                        break
+                except Exception:
+                    pass
+
+                # Strategi 2: XPath global — semua elemen dengan exact "Close"
+                try:
+                    btns = self.driver.find_elements(
+                        By.XPATH,
+                        "//ytcp-button[normalize-space(.)='Close'] | "
+                        "//tp-yt-paper-button[normalize-space(.)='Close'] | "
+                        "//button[normalize-space(.)='Close'] | "
+                        "//*[@role='button'][normalize-space(.)='Close']"
+                    )
+                    for btn in btns:
+                        if btn.is_displayed():
                             self.driver.execute_script("arguments[0].click();", btn)
-                            self.on_log("   ✅ Dialog closed")
+                            self.on_log(f"   ✅ Dialog closed (attempt {attempt+1}, XPath)")
                             closed = True
                             break
+                    if closed:
+                        break
+                except Exception:
+                    pass
+
+                # Strategi 3: ESC fallback
+                if attempt == 5:
+                    try:
+                        body = self.driver.find_element(By.TAG_NAME, "body")
+                        body.send_keys(Keys.ESCAPE)
+                        self.on_log("   ⚠️  Fallback: tekan ESC")
                     except Exception:
-                        continue
-                if closed:
-                    break
+                        pass
+
                 time.sleep(1)
-        except Exception as e:
-            self.on_log(f"   ⚠️  Close dialog: {str(e)[:80]}")
+
+            if not closed:
+                self.on_log("   ⚠️  Close button tidak ketemu setelah 10 percobaan")
 
         time.sleep(2)
-        self.on_log("   ✅ Selesai!")
-        return True
 
-    # ══════════════════════════════════════════════════════
-    # HELPERS
+        # ═══════════════════════════════════════════════════════
+        # Verifikasi TOLERAN
+        # ═══════════════════════════════════════════════════════
+        try:
+            current_url = self.driver.current_url.lower()
+
+            if "/video/" in current_url and "/edit" in current_url:
+                self.on_log("   ✅ Verified: video published (di /video/.../edit)")
+                return True
+
+            if "/videos/upload" in current_url:
+                if publish_confirmed:
+                    self.on_log("   ✅ Dialog muncul — publish OK")
+                    return True
+
+                self.on_log("   ⚠️  Tidak ada dialog + masih di upload page")
+                try:
+                    body = self.driver.page_source.lower()
+                    if '"status":"draft"' in body:
+                        self.on_log("   ❌ Video TERSIMPAN SEBAGAI DRAFT")
+                        return False
+                except Exception:
+                    pass
+                return False
+
+            if publish_confirmed:
+                self.on_log(f"   ✅ Publish confirmed")
+                return True
+
+            self.on_log(f"   ⚠️  URL tidak expected: {current_url[:80]}")
+            return False
+
+        except Exception as e:
+            self.on_log(f"   ⚠️  Verifikasi error: {str(e)[:80]}")
+
+        self.on_log("   ✅ Selesai!")
+        return publish_confirmed# HELPERS
     # ══════════════════════════════════════════════════════
     def _wait_for_checks_complete(self, max_wait_seconds=600):
         from selenium.webdriver.common.by import By

@@ -876,28 +876,30 @@
         }
 
         .selection-bar {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: linear-gradient(135deg, #1e1e2e 0%, #2a1a2e 100%);
-            border: 1px solid rgba(255,45,85,0.4);
-            border-radius: 16px;
-            padding: 12px 20px;
-            display: none;
-            align-items: center;
-            gap: 24px;
-            box-shadow:
-                0 12px 40px rgba(0,0,0,0.6),
-                0 0 0 1px rgba(255,255,255,0.05) inset;
-            z-index: 500;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            opacity: 0;
-            transition: opacity 0.25s,
-                        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            max-width: calc(100vw - 40px);
-        }
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: linear-gradient(135deg, #1e1e2e 0%, #2a1a2e 100%);
+    border: 1px solid rgba(255,45,85,0.4);
+    border-radius: 16px;
+    padding: 10px 16px;
+    display: none;
+    align-items: center;
+    gap: 16px;
+    box-shadow:
+        0 12px 40px rgba(0,0,0,0.6),
+        0 0 0 1px rgba(255,255,255,0.05) inset;
+    z-index: 500;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    transition: opacity 0.25s,
+                transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: calc(100vw - 24px);
+    flex-wrap: wrap;              /* ⚡ NEW: izinkan wrap kalau sempit */
+    justify-content: center;
+}
         .selection-bar.visible {
             display: flex;
             opacity: 1;
@@ -924,14 +926,36 @@
             font-size: 0.85rem;
         }
         .selection-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .selection-actions .btn {
-            border-radius: 10px;
-            padding: 8px 18px;
-            font-weight: 500;
-        }
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;                /* ⚡ NEW: tombol tidak mengecil */
+}
+/* Window sempit — stack vertikal */
+@media (max-width: 720px) {
+    .selection-bar {
+        flex-direction: column;
+        padding: 12px;
+        gap: 10px;
+        bottom: 10px;
+        width: calc(100vw - 20px);
+    }
+    .selection-info {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+    .selection-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    .selection-actions .btn {
+        flex: 1;
+    }
+}
+.selection-actions .btn {
+    flex-shrink: 0;                /* ⚡ NEW: tombol tetap utuh */
+    white-space: nowrap;           /* ⚡ NEW: teks tidak wrap */
+}
 
         .queue-modal {
             min-width: 900px;
@@ -1562,6 +1586,212 @@
             color: var(--text-muted);
             font-size: 0.8rem;
         }
+
+
+        /* ═══ SPLIT BUTTON — Download New Posts ═══ */
+.download-split {
+    display: inline-flex;
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(34,197,94,0.35);
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    vertical-align: middle;
+}
+
+.download-split:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(34,197,94,0.5);
+}
+
+.download-split.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.download-split-main {
+    padding: 14px 22px;
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 10px 0 0 10px;
+    min-width: 240px;
+    transition: background 0.15s;
+}
+
+.download-split-main:hover:not(:disabled) {
+    background: rgba(255,255,255,0.08);
+}
+
+.download-split-main .sub {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    opacity: 0.85;
+    margin-top: 3px;
+}
+
+.download-split-caret {
+    padding: 0 16px;
+    background: rgba(0,0,0,0.15);
+    border: none;
+    border-left: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+    border-radius: 0 10px 10px 0;
+    transition: background 0.15s;
+}
+
+.download-split-caret:hover:not(:disabled) {
+    background: rgba(0,0,0,0.3);
+}
+
+.download-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 260px;
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    z-index: 200;
+    padding: 4px;
+    display: none;
+}
+
+.download-dropdown-menu.show {
+    display: block;
+    animation: slideDown 0.15s ease-out;
+}
+
+.download-dropdown-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    transition: background 0.1s;
+    user-select: none;
+}
+
+.download-dropdown-item:hover:not(.disabled) {
+    background: var(--bg-hover);
+}
+
+.download-dropdown-item.selected {
+    background: rgba(74,158,255,0.15);
+    color: var(--accent-light);
+    font-weight: 600;
+}
+
+.download-dropdown-item.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.download-dropdown-item .item-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.download-dropdown-item .item-count {
+    font-size: 0.78rem;
+    opacity: 0.75;
+    background: rgba(255,255,255,0.08);
+    padding: 1px 8px;
+    border-radius: 10px;
+    min-width: 26px;
+    text-align: center;
+}
+
+.download-dropdown-item.selected .item-count {
+    background: rgba(74,158,255,0.25);
+    opacity: 1;
+}
+
+.download-dropdown-divider {
+    height: 1px;
+    background: var(--accent);
+    margin: 4px 8px;
+    opacity: 0.5;
+}
+/* ═══ QUEUE SETTINGS — Custom Hashtags ═══ */
+.queue-settings-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 25px;
+    background: rgba(74,158,255,0.05);
+    border-bottom: 1px solid var(--accent);
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+}
+.qs-label {
+    color: var(--text);
+    font-weight: 500;
+    white-space: nowrap;
+}
+.qs-input {
+    flex: 1;
+    min-width: 220px;
+    max-width: 400px;
+    padding: 7px 12px;
+    background: var(--bg-dark);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: 'Consolas', monospace;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.qs-input:focus {
+    border-color: var(--accent-light);
+}
+.qs-btn {
+    padding: 7px 14px;
+    background: var(--accent);
+    color: var(--text);
+    border: none;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+.qs-btn:hover {
+    background: var(--accent-light);
+}
+.qs-status {
+    color: #10b981;
+    font-size: 0.78rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.qs-status.show {
+    opacity: 1;
+}
+.qs-hint {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    opacity: 0.7;
+    width: 100%;
+    padding-left: 4px;
+}
     </style>
 </head>
 <body>
@@ -1652,7 +1882,25 @@
                 <div class="queue-stat failed"><span>Failed:</span><span class="value" id="qStatFailed">0</span></div>
                 <div class="queue-stat"><span>Total:</span><span class="value" id="qStatTotal">0</span></div>
             </div>
-
+                        <!-- ⚡ NEW: Global Custom Hashtags -->
+            <div class="queue-settings-bar">
+                <label for="ytCustomHashtags" class="qs-label">
+                    🏷️ Custom Hashtags
+                </label>
+                <input type="text"
+                       id="ytCustomHashtags"
+                       placeholder="#shorts #viral #fyp"
+                       maxlength="200"
+                       title="Hashtag akan ditambahkan di AKHIR semua judul video"
+                       class="qs-input">
+                <button class="qs-btn" onclick="saveYouTubeHashtags()" title="Simpan">
+                    💾 Save
+                </button>
+                <span id="ytHashtagsStatus" class="qs-status"></span>
+                <span class="qs-hint">
+                    Akan ditambahkan di akhir judul semua video
+                </span>
+            </div>
             <div class="queue-list" id="queueList">
                 <div class="queue-empty">Loading...</div>
             </div>
@@ -1699,6 +1947,7 @@
                 <option value="Instagram">📷 Instagram</option>
                 <option value="Twitter">🐦 Twitter</option>
                 <option value="TikTok">🎵 TikTok</option>
+                <option value="Facebook">📘 Facebook</option>
             </select>
 
              <select id="groupFilter" class="filter-select"
@@ -2037,100 +2286,496 @@
     </div>
     <!-- Selection Bar -->
     <!-- Selection Bar -->
+    <!-- Selection Bar -->
     <div class="selection-bar" id="selectionBar">
         <div class="selection-info">
             <span class="selection-count" id="selectionCount">0 selected</span>
             <span class="selection-hint">Kirim ke YouTube Upload Queue</span>
+            <select id="selectionPrivacy"
+                    title="Privacy untuk video di queue"
+                    style="background: var(--bg-dark); color: var(--text);
+                           border: 1px solid var(--accent); padding: 6px 10px;
+                           border-radius: 6px; font-size: 0.85rem; cursor: pointer;">
+                <option value="unlisted" selected>🔒 Unlisted</option>
+                <option value="public">🌐 Public</option>
+                <option value="private">🔐 Private</option>
+            </select>
         </div>
         <div class="selection-actions">
             <button class="btn" onclick="clearSelection()" style="background: #555;">✕ Clear</button>
-            <button class="btn" onclick="addSelectionToQueue()" style="background: #ff2d55;" id="btnAddToQueue">
+            <button class="btn" onclick="addSelectionToQueue()"
+                    style="background: #ff2d55; min-width: 140px;"
+                    id="btnAddToQueue">
                 📤 Add to Queue
             </button>
         </div>
     </div>
 
+
     <script>
         // ==================== TRANSLATIONS ====================
-        const translations = {
-            en: {
-                title: '⚡ Media Viewer', reindex: '📥 Re-Index', refresh: '🔄 Refresh',
-                modal_title: '📥 Re-Index Media', modal_message: 'Scan all media folders and update database?',
-                modal_message_sub: 'This will scan Instagram, Twitter, and TikTok folders for new media.',
-                cancel: 'Cancel', start_reindex: '🚀 Start Re-Index', search_placeholder: 'Search...',
-                platform: 'Platform:', type: 'Type:', account: 'Account:',
-                year: '📅 Year:', month: '📆 Month:', day: '📅 Day:', tag: '🏷️ Tag:', sort: '📅 Sort:',
-                newest: 'Newest', oldest: 'Oldest', all: 'All', all_tags: 'All Tags',
-                image: 'Image', video: 'Video', reset: 'Reset',
-                total: '📊 Total', images: '📸 Images', videos: '🎬 Videos',
-                loading: '⏳ Loading...', loading_more: 'Loading more...',
-                ctx_open: '📂 Open', ctx_open_folder: '📁 Open Folder', ctx_copy_path: '📋 Copy Path',
-                reindex_complete: '✅ Re-index complete!', reindex_error: '❌ Error:',
-                found_items: 'Found {count} items', scanning: '🔍 Scanning...',
-                indexing: '📦 Indexing...', processing: 'Processing {current}/{total}',
-                eta: 'ETA: {time}', speed: '{speed} items/sec', close: 'Close',
-                translate_content: 'Translate', translating: 'Translating...',
-                translation_on: 'Translation ON', translation_off: 'Translation OFF'
-            },
-            id: {
-                title: '⚡ Penampil Media', reindex: '📥 Re-Index', refresh: '🔄 Segarkan',
-                modal_title: '📥 Re-Index Media', modal_message: 'Pindai semua folder media dan perbarui database?',
-                modal_message_sub: 'Ini akan memindai folder Instagram, Twitter, dan TikTok untuk media baru.',
-                cancel: 'Batal', start_reindex: '🚀 Mulai Re-Index', search_placeholder: 'Cari...',
-                platform: 'Platform:', type: 'Tipe:', account: 'Akun:',
-                year: '📅 Tahun:', month: '📆 Bulan:', day: '📅 Tanggal:', tag: '🏷️ Tag:', sort: '📅 Urut:',
-                newest: 'Terbaru', oldest: 'Terlama', all: 'Semua', all_tags: 'Semua Tag',
-                image: 'Gambar', video: 'Video', reset: 'Reset',
-                total: '📊 Total', images: '📸 Gambar', videos: '🎬 Video',
-                loading: '⏳ Memuat...', loading_more: 'Memuat lebih banyak...',
-                ctx_open: '📂 Buka', ctx_open_folder: '📁 Buka Folder', ctx_copy_path: '📋 Salin Path',
-                reindex_complete: '✅ Re-index selesai!', reindex_error: '❌ Error:',
-                found_items: 'Ditemukan {count} item', scanning: '🔍 Memindai...',
-                indexing: '📦 Mengindex...', processing: 'Memproses {current}/{total}',
-                eta: 'Estimasi: {time}', speed: '{speed} item/detik', close: 'Tutup',
-                translate_content: 'Terjemahkan', translating: 'Menerjemahkan...',
-                translation_on: 'Terjemahan AKTIF', translation_off: 'Terjemahan MATI'
-            },
-            th: {
-                title: '⚡ เครื่องดูสื่อ', reindex: '📥 สแกนใหม่', refresh: '🔄 รีเฟรช',
-                modal_title: '📥 สแกนสื่อใหม่', modal_message: 'สแกนโฟลเดอร์สื่อทั้งหมดและอัพเดทฐานข้อมูล?',
-                modal_message_sub: 'จะสแกนโฟลเดอร์ Instagram, Twitter และ TikTok เพื่อหาสื่อใหม่',
-                cancel: 'ยกเลิก', start_reindex: '🚀 เริ่มสแกน', search_placeholder: 'ค้นหา...',
-                platform: 'แพลตฟอร์ม:', type: 'ประเภท:', account: 'บัญชี:',
-                year: '📅 ปี:', month: '📆 เดือน:', day: '📅 วัน:', tag: '🏷️ แท็ก:', sort: '📅 เรียง:',
-                newest: 'ใหม่สุด', oldest: 'เก่าสุด', all: 'ทั้งหมด', all_tags: 'แท็กทั้งหมด',
-                image: 'รูปภาพ', video: 'วิดีโอ', reset: 'รีเซ็ต',
-                total: '📊 ทั้งหมด', images: '📸 รูปภาพ', videos: '🎬 วิดีโอ',
-                loading: '⏳ กำลังโหลด...', loading_more: 'กำลังโหลดเพิ่ม...',
-                ctx_open: '📂 เปิด', ctx_open_folder: '📁 เปิดโฟลเดอร์', ctx_copy_path: '📋 คัดลอกเส้นทาง',
-                reindex_complete: '✅ สแกนเสร็จสิ้น!', reindex_error: '❌ ข้อผิดพลาด:',
-                found_items: 'พบ {count} รายการ', scanning: '🔍 กำลังสแกน...',
-                indexing: '📦 กำลังจัดทำดัชนี...', processing: 'กำลังประมวลผล {current}/{total}',
-                eta: 'เวลาที่เหลือ: {time}', speed: '{speed} รายการ/วินาที', close: 'ปิด',
-                translate_content: 'แปลภาษา', translating: 'กำลังแปล...',
-                translation_on: 'การแปล เปิด', translation_off: 'การแปล ปิด'
-            },
-            vi: {
-                title: '⚡ Trình Xem Media', reindex: '📥 Quét Lại', refresh: '🔄 Làm Mới',
-                modal_title: '📥 Quét Lại Media', modal_message: 'Quét tất cả thư mục media và cập nhật cơ sở dữ liệu?',
-                modal_message_sub: 'Thao tác này sẽ quét thư mục Instagram, Twitter và TikTok để tìm media mới.',
-                cancel: 'Hủy', start_reindex: '🚀 Bắt Đầu Quét', search_placeholder: 'Tìm kiếm...',
-                platform: 'Nền tảng:', type: 'Loại:', account: 'Tài khoản:',
-                year: '📅 Năm:', month: '📆 Tháng:', day: '📅 Ngày:', tag: '🏷️ Thẻ:', sort: '📅 Sắp xếp:',
-                newest: 'Mới nhất', oldest: 'Cũ nhất', all: 'Tất cả', all_tags: 'Tất cả thẻ',
-                image: 'Hình ảnh', video: 'Video', reset: 'Đặt lại',
-                total: '📊 Tổng', images: '📸 Hình ảnh', videos: '🎬 Video',
-                loading: '⏳ Đang tải...', loading_more: 'Đang tải thêm...',
-                ctx_open: '📂 Mở', ctx_open_folder: '📁 Mở Thư Mục', ctx_copy_path: '📋 Sao Chép Đường Dẫn',
-                reindex_complete: '✅ Quét lại hoàn tất!', reindex_error: '❌ Lỗi:',
-                found_items: 'Tìm thấy {count} mục', scanning: '🔍 Đang quét...',
-                indexing: '📦 Đang lập chỉ mục...', processing: 'Đang xử lý {current}/{total}',
-                eta: 'Thời gian còn lại: {time}', speed: '{speed} mục/giây', close: 'Đóng',
-                translate_content: 'Dịch', translating: 'Đang dịch...',
-                translation_on: 'Bật dịch', translation_off: 'Tắt dịch'
-            }
-        };
-
+    const translations = {
+        en: {
+            // Header
+            title: '⚡ Media Viewer',
+            reindex: '📥 Re-Index', quick_scan: '⚡ Quick Scan', clean_missing: '🧹 Clean Missing',
+            queue_btn: '🎬 Queue', download_btn: '📥 Download', groups_btn: '👥 Groups',
+            refresh: '🔄 Refresh', translate_content: 'Translate',
+            // Filters
+            search_placeholder: 'Search caption, user, or tag...',
+            all_platforms: '📱 All Platforms', all_groups: '👥 All Groups',
+            all_accounts: '👤 All Accounts', all_types: '🎨 All Types',
+            all_tags: 'All Tags', newest: '⬇️ Newest', oldest: '⬆️ Oldest',
+            more: 'More', filter_active: 'Active filters:', clear_all: 'Clear All',
+            reset_filters: 'Reset filters',
+            year: 'Year', month: 'Month', day: 'Day', tag: 'Tag',
+            stat_total: '📊', stat_images: '📸', stat_videos: '🎬',
+            // Common
+            save: 'Save', cancel: 'Cancel', close: 'Close', delete: 'Delete',
+            edit: 'Edit', clear: 'Clear', stop: 'Stop', all: 'All',
+            loading: 'Loading...', processing: 'Processing...', saving: 'Saving...',
+            saved: '✓ Saved', error: 'Error', success: 'Success',
+            user_singular: 'user', user_plural: 'users',
+            // Reindex modal
+            modal_title: '📥 Re-Index Media',
+            modal_message: 'Scan all media folders and update database?',
+            modal_message_sub: 'This will scan Instagram, Twitter, TikTok, and Facebook folders.',
+            start_reindex: '🚀 Start Re-Index', scanning: '🔍 Scanning...',
+            indexing: '📦 Indexing...',
+            reindex_complete: '✅ Re-index complete!', reindex_error: '❌ Error:',
+            found_items: 'Found {count} items', speed: '{speed} items/sec',
+            // Queue
+            yt_queue_title: '🎬 YouTube Upload Queue',
+            worker_running: 'Worker: running (PID {pid})',
+            worker_stopped: 'Worker: stopped',
+            status_pending: 'Pending', status_uploading: 'Uploading',
+            status_done: 'Done', status_failed: 'Failed', status_total: 'Total',
+            start_worker: '▶ Start Worker', stop_worker: '⏸ Stop',
+            retry_failed: '🔄 Retry Failed', clear_done: '🗑 Clear Done',
+            custom_hashtags: '🏷️ Custom Hashtags',
+            hashtags_hint: 'Appended to the end of every video title',
+            queue_empty_hint: 'Queue is empty. Select videos from the grid and click "Add to Queue".',
+            queue_title_edit: '✏️ Edit Queue Item',
+            queue_edit_title_label: 'Title (max 100)',
+            queue_edit_desc_label: 'Description',
+            queue_edit_tags_label: 'Tags (comma separated)',
+            queue_edit_privacy_label: 'Privacy',
+            confirm_remove_item: 'Remove this item from queue?',
+            confirm_clear_done: 'Delete all completed/failed items?',
+            confirm_clear_all: 'Delete all items (except uploading)?',
+            watch_on_yt: '▶ Watch',
+            // Groups
+            groups_title: '👥 Idol Groups',
+            new_group: '+ New Group', no_groups_hint: 'No groups yet. Click "+ New Group".',
+            select_group_hint: 'Select a group from the sidebar to see details',
+            group_not_found: 'Group not found',
+            members_count: '{count} members', accounts_count: '{count} accounts',
+            download_new_posts: '📥 Download New Posts',
+            cek_accounts_label: 'Check {count} accounts, {platform}',
+            hint_all_platforms: 'All platforms will be downloaded',
+            hint_click_download: 'Click the button to start download',
+            add_member: '➕ Add Member', add_account: '🔗 Add Account',
+            members_accounts: 'Members & Accounts',
+            history: 'History', no_accounts_hint: 'No accounts yet',
+            last_check: 'last: {time}', never: 'never',
+            tree_label: 'TREE',
+            // Group edit modal
+            new_group_title: '➕ New Group', new_member_title: '➕ New Member',
+            edit_group_title: '✏️ Edit Group',
+            field_name: 'Name', field_icon: 'Icon (emoji)', field_color: 'Color',
+            field_parent: 'Parent: {name}',
+            // Account modal
+            add_account_title: '➕ Add Account', edit_account_title: '✏️ Edit Account',
+            field_platform: 'Platform', field_username: 'Username (without @)',
+            field_active: 'Active',
+            existing_count: '{count} existing',
+            placeholder_username: 'Type or pick from list...',
+            no_existing_accounts: 'No existing accounts',
+            no_matching: 'No matches',
+            // Group download
+            group_dl_title: '📥 Download New Posts',
+            group_dl_platforms: 'Platforms',
+            group_dl_delay: 'Delay between accounts (s)',
+            group_dl_start: '🚀 Start',
+            // Manual download
+            mdl_title: '📥 Download by Username',
+            mdl_usernames_label: 'Usernames (one per line, without @)',
+            mdl_usernames_label_fb: 'Page URLs (one per line)',
+            mdl_paste: '📋 Paste', mdl_load_existing: '📚 Load Existing',
+            mdl_clear: '🗑 Clear', mdl_quality: 'Quality',
+            mdl_delay: 'Delay between users (s)', mdl_workers: 'Workers',
+            mdl_skip_dup: 'Skip duplicates',
+            mdl_quality_hd: 'HD (1080p, no watermark)', mdl_quality_sd: 'SD (720p)',
+            mdl_start: '🚀 Start Download',
+            mdl_warning_ig: '⚠️ <b>Instagram:</b> avoid >3 accounts per run to prevent rate limit / challenge.',
+            mdl_warning_tt: '✅ <b>TikTok:</b> rate limit is looser. Can download many accounts.',
+            mdl_warning_fb: '⚠️ <b>Facebook:</b> minimum 3s delay. Very aggressive rate limit. Max 1-3 Pages per run.',
+            mdl_running_msg: 'Running: {count} {unit}',
+            mdl_confirm_close: 'Download is running.\\n\\nClose modal? Worker keeps running in background — click "📥 Download" again to see progress.',
+            // Selection bar
+            sel_hint: 'Send to YouTube Upload Queue',
+            sel_selected: '{count} selected',
+            sel_add_queue: '📤 Add to Queue',
+            sel_adding: '⏳ Adding...',
+            msg_added: '✅ Added: {added} | Skipped: {skipped}\\n\\nPrivacy: {privacy}',
+            privacy_unlisted: '🔒 Unlisted', privacy_public: '🌐 Public',
+            privacy_private: '🔐 Private',
+            // Validation
+            err_name_required: 'Name is required',
+            err_username_required: 'Username is required',
+            err_min_1_platform: 'Select at least 1 platform',
+            err_min_1_username: 'Enter at least 1 username',
+            err_min_1_url: 'Enter at least 1 Facebook Page URL (must start with http)',
+            confirm_delete_group: 'Delete group and all sub-groups and accounts?',
+            confirm_delete_account: 'Delete this account?',
+            confirm_stop_download: 'Stop the running download?',
+        },
+        id: {
+            // Header
+            title: '⚡ Media Viewer',
+            reindex: '📥 Re-Index', quick_scan: '⚡ Quick Scan', clean_missing: '🧹 Clean Missing',
+            queue_btn: '🎬 Queue', download_btn: '📥 Download', groups_btn: '👥 Groups',
+            refresh: '🔄 Segarkan', translate_content: 'Terjemahkan',
+            // Filters
+            search_placeholder: 'Cari caption, user, atau tag...',
+            all_platforms: '📱 Semua Platform', all_groups: '👥 Semua Group',
+            all_accounts: '👤 Semua Akun', all_types: '🎨 Semua Tipe',
+            all_tags: 'Semua Tag', newest: '⬇️ Terbaru', oldest: '⬆️ Terlama',
+            more: 'More', filter_active: 'Filter aktif:', clear_all: 'Hapus Semua',
+            reset_filters: 'Reset filter',
+            year: 'Tahun', month: 'Bulan', day: 'Hari', tag: 'Tag',
+            stat_total: '📊', stat_images: '📸', stat_videos: '🎬',
+            // Common
+            save: 'Simpan', cancel: 'Batal', close: 'Tutup', delete: 'Hapus',
+            edit: 'Edit', clear: 'Kosongkan', stop: 'Stop', all: 'Semua',
+            loading: '⏳ Memuat...', processing: 'Memproses...', saving: 'Menyimpan...',
+            saved: '✓ Tersimpan', error: 'Error', success: 'Berhasil',
+            user_singular: 'user', user_plural: 'user',
+            // Reindex modal
+            modal_title: '📥 Re-Index Media',
+            modal_message: 'Pindai semua folder media dan perbarui database?',
+            modal_message_sub: 'Akan memindai folder Instagram, Twitter, TikTok, dan Facebook.',
+            start_reindex: '🚀 Mulai Re-Index', scanning: '🔍 Memindai...',
+            indexing: '📦 Mengindex...',
+            reindex_complete: '✅ Re-index selesai!', reindex_error: '❌ Error:',
+            found_items: 'Ditemukan {count} item', speed: '{speed} item/detik',
+            // Queue
+            yt_queue_title: '🎬 Antrian Upload YouTube',
+            worker_running: 'Worker: berjalan (PID {pid})',
+            worker_stopped: 'Worker: berhenti',
+            status_pending: 'Pending', status_uploading: 'Uploading',
+            status_done: 'Selesai', status_failed: 'Gagal', status_total: 'Total',
+            start_worker: '▶ Mulai Worker', stop_worker: '⏸ Stop',
+            retry_failed: '🔄 Ulangi Gagal', clear_done: '🗑 Hapus Selesai',
+            custom_hashtags: '🏷️ Hashtag Kustom',
+            hashtags_hint: 'Ditambahkan di akhir judul setiap video',
+            queue_empty_hint: 'Antrian kosong. Pilih video di grid dan klik "Add to Queue".',
+            queue_title_edit: '✏️ Edit Item Antrian',
+            queue_edit_title_label: 'Judul (maks 100)',
+            queue_edit_desc_label: 'Deskripsi',
+            queue_edit_tags_label: 'Tag (dipisah koma)',
+            queue_edit_privacy_label: 'Privasi',
+            confirm_remove_item: 'Hapus item ini dari antrian?',
+            confirm_clear_done: 'Hapus semua item selesai/gagal?',
+            confirm_clear_all: 'Hapus semua item (kecuali uploading)?',
+            watch_on_yt: '▶ Tonton',
+            // Groups
+            groups_title: '👥 Grup Idol',
+            new_group: '+ Grup Baru', no_groups_hint: 'Belum ada grup. Klik "+ Grup Baru".',
+            select_group_hint: 'Pilih grup di sidebar untuk melihat detail',
+            group_not_found: 'Grup tidak ditemukan',
+            members_count: '{count} member', accounts_count: '{count} akun',
+            download_new_posts: '📥 Download Post Baru',
+            cek_accounts_label: 'Cek {count} akun, {platform}',
+            hint_all_platforms: 'Semua platform akan didownload',
+            hint_click_download: 'Klik tombol untuk mulai download',
+            add_member: '➕ Tambah Member', add_account: '🔗 Tambah Akun',
+            members_accounts: 'Member & Akun',
+            history: 'Riwayat', no_accounts_hint: 'Belum ada akun',
+            last_check: 'terakhir: {time}', never: 'belum pernah',
+            tree_label: 'TREE',
+            // Group edit modal
+            new_group_title: '➕ Grup Baru', new_member_title: '➕ Member Baru',
+            edit_group_title: '✏️ Edit Grup',
+            field_name: 'Nama', field_icon: 'Icon (emoji)', field_color: 'Warna',
+            field_parent: 'Parent: {name}',
+            // Account modal
+            add_account_title: '➕ Tambah Akun', edit_account_title: '✏️ Edit Akun',
+            field_platform: 'Platform', field_username: 'Username (tanpa @)',
+            field_active: 'Aktif',
+            existing_count: '{count} existing',
+            placeholder_username: 'Ketik atau pilih dari list...',
+            no_existing_accounts: 'Tidak ada existing account',
+            no_matching: 'Tidak ada yang cocok',
+            // Group download
+            group_dl_title: '📥 Download Post Baru',
+            group_dl_platforms: 'Platform',
+            group_dl_delay: 'Delay antar akun (detik)',
+            group_dl_start: '🚀 Mulai',
+            // Manual download
+            mdl_title: '📥 Download by Username',
+            mdl_usernames_label: 'Username (satu per baris, tanpa @)',
+            mdl_usernames_label_fb: 'URL Halaman (satu per baris)',
+            mdl_paste: '📋 Paste', mdl_load_existing: '📚 Load Existing',
+            mdl_clear: '🗑 Kosongkan', mdl_quality: 'Kualitas',
+            mdl_delay: 'Delay antar user (s)', mdl_workers: 'Workers',
+            mdl_skip_dup: 'Skip duplikat',
+            mdl_quality_hd: 'HD (1080p, tanpa watermark)', mdl_quality_sd: 'SD (720p)',
+            mdl_start: '🚀 Mulai Download',
+            mdl_warning_ig: '⚠️ <b>Instagram:</b> hindari >3 akun per run untuk menghindari rate limit / challenge.',
+            mdl_warning_tt: '✅ <b>TikTok:</b> rate limit lebih longgar. Bisa download banyak akun.',
+            mdl_warning_fb: '⚠️ <b>Facebook:</b> delay minimal 3 detik. Rate limit sangat agresif. Maks 1-3 Halaman per run.',
+            mdl_running_msg: 'Running: {count} {unit}',
+            mdl_confirm_close: 'Download sedang berjalan.\\n\\nTutup modal? Worker tetap jalan di background — klik "📥 Download" lagi untuk melihat progress.',
+            // Selection bar
+            sel_hint: 'Kirim ke Antrian Upload YouTube',
+            sel_selected: '{count} dipilih',
+            sel_add_queue: '📤 Tambah ke Antrian',
+            sel_adding: '⏳ Menambahkan...',
+            msg_added: '✅ Ditambahkan: {added} | Skip: {skipped}\\n\\nPrivasi: {privacy}',
+            privacy_unlisted: '🔒 Unlisted', privacy_public: '🌐 Public',
+            privacy_private: '🔐 Private',
+            // Validation
+            err_name_required: 'Nama wajib diisi',
+            err_username_required: 'Username wajib diisi',
+            err_min_1_platform: 'Pilih minimal 1 platform',
+            err_min_1_username: 'Isi minimal 1 username',
+            err_min_1_url: 'Isi minimal 1 URL Halaman Facebook (harus mulai http)',
+            confirm_delete_group: 'Hapus grup beserta semua sub-grup dan akun?',
+            confirm_delete_account: 'Hapus akun ini?',
+            confirm_stop_download: 'Stop download yang sedang berjalan?',
+        },
+        th: {
+            // Header
+            title: '⚡ เครื่องเล่นสื่อ',
+            reindex: '📥 สแกนใหม่', quick_scan: '⚡ สแกนเร็ว', clean_missing: '🧹 ล้างข้อมูลหาย',
+            queue_btn: '🎬 คิว', download_btn: '📥 ดาวน์โหลด', groups_btn: '👥 กลุ่ม',
+            refresh: '🔄 รีเฟรช', translate_content: 'แปลภาษา',
+            // Filters
+            search_placeholder: 'ค้นหาแคปชัน ผู้ใช้ หรือแท็ก...',
+            all_platforms: '📱 ทุกแพลตฟอร์ม', all_groups: '👥 ทุกกลุ่ม',
+            all_accounts: '👤 ทุกบัญชี', all_types: '🎨 ทุกประเภท',
+            all_tags: 'แท็กทั้งหมด', newest: '⬇️ ใหม่สุด', oldest: '⬆️ เก่าสุด',
+            more: 'เพิ่มเติม', filter_active: 'ตัวกรองที่ใช้:', clear_all: 'ล้างทั้งหมด',
+            reset_filters: 'รีเซ็ตตัวกรอง',
+            year: 'ปี', month: 'เดือน', day: 'วัน', tag: 'แท็ก',
+            stat_total: '📊', stat_images: '📸', stat_videos: '🎬',
+            // Common
+            save: 'บันทึก', cancel: 'ยกเลิก', close: 'ปิด', delete: 'ลบ',
+            edit: 'แก้ไข', clear: 'ล้าง', stop: 'หยุด', all: 'ทั้งหมด',
+            loading: '⏳ กำลังโหลด...', processing: 'กำลังประมวลผล...', saving: 'กำลังบันทึก...',
+            saved: '✓ บันทึกแล้ว', error: 'ข้อผิดพลาด', success: 'สำเร็จ',
+            user_singular: 'ผู้ใช้', user_plural: 'ผู้ใช้',
+            // Reindex modal
+            modal_title: '📥 สแกนสื่อใหม่',
+            modal_message: 'สแกนโฟลเดอร์สื่อทั้งหมดและอัปเดตฐานข้อมูล?',
+            modal_message_sub: 'จะสแกนโฟลเดอร์ Instagram, Twitter, TikTok และ Facebook',
+            start_reindex: '🚀 เริ่มสแกน', scanning: '🔍 กำลังสแกน...',
+            indexing: '📦 กำลังจัดทำดัชนี...',
+            reindex_complete: '✅ สแกนเสร็จสิ้น!', reindex_error: '❌ ข้อผิดพลาด:',
+            found_items: 'พบ {count} รายการ', speed: '{speed} รายการ/วินาที',
+            // Queue
+            yt_queue_title: '🎬 คิวอัปโหลด YouTube',
+            worker_running: 'Worker: กำลังทำงาน (PID {pid})',
+            worker_stopped: 'Worker: หยุด',
+            status_pending: 'รอ', status_uploading: 'กำลังอัปโหลด',
+            status_done: 'เสร็จ', status_failed: 'ล้มเหลว', status_total: 'รวม',
+            start_worker: '▶ เริ่ม Worker', stop_worker: '⏸ หยุด',
+            retry_failed: '🔄 ลองใหม่', clear_done: '🗑 ล้างที่เสร็จ',
+            custom_hashtags: '🏷️ แฮชแท็กกำหนดเอง',
+            hashtags_hint: 'ต่อท้ายชื่อวิดีโอทุกอัน',
+            queue_empty_hint: 'คิวว่าง เลือกวิดีโอจากกริดและคลิก "เพิ่มในคิว"',
+            queue_title_edit: '✏️ แก้ไขรายการคิว',
+            queue_edit_title_label: 'ชื่อเรื่อง (สูงสุด 100)',
+            queue_edit_desc_label: 'คำอธิบาย',
+            queue_edit_tags_label: 'แท็ก (คั่นด้วยจุลภาค)',
+            queue_edit_privacy_label: 'ความเป็นส่วนตัว',
+            confirm_remove_item: 'ลบรายการนี้ออกจากคิว?',
+            confirm_clear_done: 'ลบรายการที่เสร็จ/ล้มเหลวทั้งหมด?',
+            confirm_clear_all: 'ลบรายการทั้งหมด (ยกเว้นที่กำลังอัปโหลด)?',
+            watch_on_yt: '▶ ดู',
+            // Groups
+            groups_title: '👥 กลุ่มไอดอล',
+            new_group: '+ กลุ่มใหม่', no_groups_hint: 'ยังไม่มีกลุ่ม คลิก "+ กลุ่มใหม่"',
+            select_group_hint: 'เลือกกลุ่มจากแถบด้านข้างเพื่อดูรายละเอียด',
+            group_not_found: 'ไม่พบกลุ่ม',
+            members_count: '{count} สมาชิก', accounts_count: '{count} บัญชี',
+            download_new_posts: '📥 ดาวน์โหลดโพสต์ใหม่',
+            cek_accounts_label: 'ตรวจสอบ {count} บัญชี, {platform}',
+            hint_all_platforms: 'จะดาวน์โหลดทุกแพลตฟอร์ม',
+            hint_click_download: 'คลิกปุ่มเพื่อเริ่มดาวน์โหลด',
+            add_member: '➕ เพิ่มสมาชิก', add_account: '🔗 เพิ่มบัญชี',
+            members_accounts: 'สมาชิกและบัญชี',
+            history: 'ประวัติ', no_accounts_hint: 'ยังไม่มีบัญชี',
+            last_check: 'ล่าสุด: {time}', never: 'ไม่เคย',
+            tree_label: 'ต้นไม้',
+            // Group edit modal
+            new_group_title: '➕ กลุ่มใหม่', new_member_title: '➕ สมาชิกใหม่',
+            edit_group_title: '✏️ แก้ไขกลุ่ม',
+            field_name: 'ชื่อ', field_icon: 'ไอคอน (emoji)', field_color: 'สี',
+            field_parent: 'พ่อแม่: {name}',
+            // Account modal
+            add_account_title: '➕ เพิ่มบัญชี', edit_account_title: '✏️ แก้ไขบัญชี',
+            field_platform: 'แพลตฟอร์ม', field_username: 'ชื่อผู้ใช้ (ไม่มี @)',
+            field_active: 'ใช้งาน',
+            existing_count: '{count} ที่มีอยู่',
+            placeholder_username: 'พิมพ์หรือเลือกรายการ...',
+            no_existing_accounts: 'ไม่มีบัญชีที่มีอยู่',
+            no_matching: 'ไม่ตรงกัน',
+            // Group download
+            group_dl_title: '📥 ดาวน์โหลดโพสต์ใหม่',
+            group_dl_platforms: 'แพลตฟอร์ม',
+            group_dl_delay: 'ดีเลย์ระหว่างบัญชี (วินาที)',
+            group_dl_start: '🚀 เริ่ม',
+            // Manual download
+            mdl_title: '📥 ดาวน์โหลดตามชื่อผู้ใช้',
+            mdl_usernames_label: 'ชื่อผู้ใช้ (บรรทัดละหนึ่ง, ไม่มี @)',
+            mdl_usernames_label_fb: 'URL หน้า (บรรทัดละหนึ่ง)',
+            mdl_paste: '📋 วาง', mdl_load_existing: '📚 โหลดที่มีอยู่',
+            mdl_clear: '🗑 ล้าง', mdl_quality: 'คุณภาพ',
+            mdl_delay: 'ดีเลย์ระหว่างผู้ใช้ (s)', mdl_workers: 'Workers',
+            mdl_skip_dup: 'ข้ามรายการซ้ำ',
+            mdl_quality_hd: 'HD (1080p, ไม่มีลายน้ำ)', mdl_quality_sd: 'SD (720p)',
+            mdl_start: '🚀 เริ่มดาวน์โหลด',
+            mdl_warning_ig: '⚠️ <b>Instagram:</b> หลีกเลี่ยง >3 บัญชีต่อครั้งเพื่อป้องกัน rate limit',
+            mdl_warning_tt: '✅ <b>TikTok:</b> rate limit ผ่อนปรน ดาวน์โหลดได้หลายบัญชี',
+            mdl_warning_fb: '⚠️ <b>Facebook:</b> ดีเลย์ขั้นต่ำ 3 วินาที rate limit รุนแรง',
+            mdl_running_msg: 'กำลังรัน: {count} {unit}',
+            mdl_confirm_close: 'กำลังดาวน์โหลดอยู่\\n\\nปิดหน้าต่าง? Worker ยังทำงานเบื้องหลัง — คลิก "📥 ดาวน์โหลด" เพื่อดูอีกครั้ง',
+            // Selection bar
+            sel_hint: 'ส่งไปยังคิวอัปโหลด YouTube',
+            sel_selected: 'เลือก {count} รายการ',
+            sel_add_queue: '📤 เพิ่มในคิว',
+            sel_adding: '⏳ กำลังเพิ่ม...',
+            msg_added: '✅ เพิ่ม: {added} | ข้าม: {skipped}\\n\\nความเป็นส่วนตัว: {privacy}',
+            privacy_unlisted: '🔒 ไม่แสดงรายการ', privacy_public: '🌐 สาธารณะ',
+            privacy_private: '🔐 ส่วนตัว',
+            // Validation
+            err_name_required: 'ต้องระบุชื่อ',
+            err_username_required: 'ต้องระบุชื่อผู้ใช้',
+            err_min_1_platform: 'เลือกอย่างน้อย 1 แพลตฟอร์ม',
+            err_min_1_username: 'ป้อนอย่างน้อย 1 ชื่อผู้ใช้',
+            err_min_1_url: 'ป้อนอย่างน้อย 1 URL หน้า Facebook',
+            confirm_delete_group: 'ลบกลุ่มและกลุ่มย่อยและบัญชีทั้งหมด?',
+            confirm_delete_account: 'ลบบัญชีนี้?',
+            confirm_stop_download: 'หยุดการดาวน์โหลดที่กำลังทำงาน?',
+        },
+        vi: {
+            // Header
+            title: '⚡ Trình Xem Media',
+            reindex: '📥 Quét Lại', quick_scan: '⚡ Quét Nhanh', clean_missing: '🧹 Dọn Thiếu',
+            queue_btn: '🎬 Hàng Đợi', download_btn: '📥 Tải Xuống', groups_btn: '👥 Nhóm',
+            refresh: '🔄 Làm Mới', translate_content: 'Dịch',
+            // Filters
+            search_placeholder: 'Tìm chú thích, người dùng hoặc thẻ...',
+            all_platforms: '📱 Tất Cả Nền Tảng', all_groups: '👥 Tất Cả Nhóm',
+            all_accounts: '👤 Tất Cả Tài Khoản', all_types: '🎨 Tất Cả Loại',
+            all_tags: 'Tất Cả Thẻ', newest: '⬇️ Mới Nhất', oldest: '⬆️ Cũ Nhất',
+            more: 'Thêm', filter_active: 'Bộ lọc:', clear_all: 'Xóa Tất Cả',
+            reset_filters: 'Đặt lại bộ lọc',
+            year: 'Năm', month: 'Tháng', day: 'Ngày', tag: 'Thẻ',
+            stat_total: '📊', stat_images: '📸', stat_videos: '🎬',
+            // Common
+            save: 'Lưu', cancel: 'Hủy', close: 'Đóng', delete: 'Xóa',
+            edit: 'Sửa', clear: 'Xóa', stop: 'Dừng', all: 'Tất cả',
+            loading: '⏳ Đang tải...', processing: 'Đang xử lý...', saving: 'Đang lưu...',
+            saved: '✓ Đã lưu', error: 'Lỗi', success: 'Thành công',
+            user_singular: 'người dùng', user_plural: 'người dùng',
+            // Reindex modal
+            modal_title: '📥 Quét Lại Media',
+            modal_message: 'Quét tất cả thư mục và cập nhật cơ sở dữ liệu?',
+            modal_message_sub: 'Sẽ quét Instagram, Twitter, TikTok và Facebook.',
+            start_reindex: '🚀 Bắt Đầu Quét', scanning: '🔍 Đang quét...',
+            indexing: '📦 Đang lập chỉ mục...',
+            reindex_complete: '✅ Hoàn tất!', reindex_error: '❌ Lỗi:',
+            found_items: 'Tìm thấy {count} mục', speed: '{speed} mục/giây',
+            // Queue
+            yt_queue_title: '🎬 Hàng Đợi Upload YouTube',
+            worker_running: 'Worker: đang chạy (PID {pid})',
+            worker_stopped: 'Worker: dừng',
+            status_pending: 'Chờ', status_uploading: 'Đang tải',
+            status_done: 'Xong', status_failed: 'Thất bại', status_total: 'Tổng',
+            start_worker: '▶ Bắt Đầu', stop_worker: '⏸ Dừng',
+            retry_failed: '🔄 Thử Lại', clear_done: '🗑 Xóa Xong',
+            custom_hashtags: '🏷️ Hashtag Tùy Chỉnh',
+            hashtags_hint: 'Thêm vào cuối tiêu đề mọi video',
+            queue_empty_hint: 'Hàng đợi trống. Chọn video từ lưới và nhấp "Thêm Vào Hàng Đợi".',
+            queue_title_edit: '✏️ Sửa Mục Hàng Đợi',
+            queue_edit_title_label: 'Tiêu đề (tối đa 100)',
+            queue_edit_desc_label: 'Mô tả',
+            queue_edit_tags_label: 'Thẻ (phân cách bằng dấu phẩy)',
+            queue_edit_privacy_label: 'Quyền riêng tư',
+            confirm_remove_item: 'Xóa mục này khỏi hàng đợi?',
+            confirm_clear_done: 'Xóa tất cả mục hoàn tất/thất bại?',
+            confirm_clear_all: 'Xóa tất cả mục (trừ đang tải)?',
+            watch_on_yt: '▶ Xem',
+            // Groups
+            groups_title: '👥 Nhóm Idol',
+            new_group: '+ Nhóm Mới', no_groups_hint: 'Chưa có nhóm. Nhấp "+ Nhóm Mới".',
+            select_group_hint: 'Chọn nhóm từ thanh bên để xem chi tiết',
+            group_not_found: 'Không tìm thấy nhóm',
+            members_count: '{count} thành viên', accounts_count: '{count} tài khoản',
+            download_new_posts: '📥 Tải Bài Mới',
+            cek_accounts_label: 'Kiểm tra {count} tài khoản, {platform}',
+            hint_all_platforms: 'Sẽ tải tất cả nền tảng',
+            hint_click_download: 'Nhấp nút để bắt đầu tải',
+            add_member: '➕ Thêm Thành Viên', add_account: '🔗 Thêm Tài Khoản',
+            members_accounts: 'Thành Viên & Tài Khoản',
+            history: 'Lịch Sử', no_accounts_hint: 'Chưa có tài khoản',
+            last_check: 'lần cuối: {time}', never: 'chưa bao giờ',
+            tree_label: 'CÂY',
+            // Group edit modal
+            new_group_title: '➕ Nhóm Mới', new_member_title: '➕ Thành Viên Mới',
+            edit_group_title: '✏️ Sửa Nhóm',
+            field_name: 'Tên', field_icon: 'Biểu tượng (emoji)', field_color: 'Màu',
+            field_parent: 'Cha: {name}',
+            // Account modal
+            add_account_title: '➕ Thêm Tài Khoản', edit_account_title: '✏️ Sửa Tài Khoản',
+            field_platform: 'Nền tảng', field_username: 'Tên người dùng (không @)',
+            field_active: 'Hoạt động',
+            existing_count: '{count} hiện có',
+            placeholder_username: 'Nhập hoặc chọn từ danh sách...',
+            no_existing_accounts: 'Không có tài khoản hiện có',
+            no_matching: 'Không khớp',
+            // Group download
+            group_dl_title: '📥 Tải Bài Mới',
+            group_dl_platforms: 'Nền tảng',
+            group_dl_delay: 'Độ trễ giữa các tài khoản (giây)',
+            group_dl_start: '🚀 Bắt Đầu',
+            // Manual download
+            mdl_title: '📥 Tải Theo Tên Người Dùng',
+            mdl_usernames_label: 'Tên người dùng (mỗi dòng một, không @)',
+            mdl_usernames_label_fb: 'URL Trang (mỗi dòng một)',
+            mdl_paste: '📋 Dán', mdl_load_existing: '📚 Tải Hiện Có',
+            mdl_clear: '🗑 Xóa', mdl_quality: 'Chất lượng',
+            mdl_delay: 'Độ trễ giữa người dùng (s)', mdl_workers: 'Workers',
+            mdl_skip_dup: 'Bỏ qua trùng',
+            mdl_quality_hd: 'HD (1080p, không watermark)', mdl_quality_sd: 'SD (720p)',
+            mdl_start: '🚀 Bắt Đầu Tải',
+            mdl_warning_ig: '⚠️ <b>Instagram:</b> tránh >3 tài khoản mỗi lần để không bị giới hạn.',
+            mdl_warning_tt: '✅ <b>TikTok:</b> giới hạn thoáng hơn. Tải được nhiều tài khoản.',
+            mdl_warning_fb: '⚠️ <b>Facebook:</b> độ trễ tối thiểu 3 giây. Giới hạn rất nghiêm.',
+            mdl_running_msg: 'Đang chạy: {count} {unit}',
+            mdl_confirm_close: 'Đang tải xuống.\\n\\nĐóng? Worker vẫn chạy nền — nhấp "📥 Tải Xuống" để xem lại.',
+            // Selection bar
+            sel_hint: 'Gửi đến Hàng Đợi Upload YouTube',
+            sel_selected: 'Đã chọn {count}',
+            sel_add_queue: '📤 Thêm Vào Hàng Đợi',
+            sel_adding: '⏳ Đang thêm...',
+            msg_added: '✅ Đã thêm: {added} | Bỏ qua: {skipped}\\n\\nQuyền riêng tư: {privacy}',
+            privacy_unlisted: '🔒 Không công khai', privacy_public: '🌐 Công khai',
+            privacy_private: '🔐 Riêng tư',
+            // Validation
+            err_name_required: 'Cần nhập tên',
+            err_username_required: 'Cần nhập tên người dùng',
+            err_min_1_platform: 'Chọn ít nhất 1 nền tảng',
+            err_min_1_username: 'Nhập ít nhất 1 tên người dùng',
+            err_min_1_url: 'Nhập ít nhất 1 URL Trang Facebook',
+            confirm_delete_group: 'Xóa nhóm và tất cả nhóm con và tài khoản?',
+            confirm_delete_account: 'Xóa tài khoản này?',
+            confirm_stop_download: 'Dừng tải xuống đang chạy?',
+        }
+    };
         let currentLang = localStorage.getItem('mediaViewerLang') || 'en';
 
         function t(key, params = {}) {
@@ -2140,13 +2785,29 @@
         }
 
         function applyTranslations() {
+            // Text content
             document.querySelectorAll('[data-i18n]').forEach(el => {
-                el.textContent = t(el.getAttribute('data-i18n'));
+                const key = el.getAttribute('data-i18n');
+                const translated = t(key);
+                if (translated && translated !== key) {
+                    el.textContent = translated;
+                }
             });
+
+            // Placeholder
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
             });
+
+            // Title (tooltip)
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                el.title = t(el.getAttribute('data-i18n-title'));
+            });
+
             document.title = t('title').replace('⚡ ', '');
+
+            // HTML lang attribute
+            document.documentElement.lang = currentLang;
         }
 
         function setLanguage(lang) {
@@ -2154,6 +2815,34 @@
             localStorage.setItem('mediaViewerLang', lang);
             applyTranslations();
             updateFilterOptions();
+
+            // ⚡ Re-render komponen dinamis yang mengandung teks hardcoded
+            try {
+                // Groups tree (kalau sedang di halaman groups)
+                const groupsView = document.getElementById('groupsView');
+                if (groupsView && groupsView.classList.contains('visible')) {
+                    if (typeof renderGroupsTree === 'function') renderGroupsTree();
+                    if (typeof selectedGroupId !== 'undefined' && selectedGroupId) {
+                        if (typeof renderGroupDetail === 'function') {
+                            renderGroupDetail(selectedGroupId);
+                        }
+                    }
+                }
+
+                // Queue modal (kalau terbuka)
+                const queueModal = document.getElementById('queueModal');
+                if (queueModal && queueModal.classList.contains('show')) {
+                    if (typeof refreshQueue === 'function') refreshQueue();
+                }
+
+                // Filter chips
+                if (typeof updateFilterChips === 'function') updateFilterChips();
+
+                // Placeholder + warning di manual download modal
+                if (typeof updateMdlUserCount === 'function') updateMdlUserCount();
+            } catch (e) {
+                console.log('Re-render error after language change:', e);
+            }
         }
 
         function updateFilterOptions() {
@@ -2415,7 +3104,8 @@
             const platformPrefix = {
                 'Instagram': '📷',
                 'Twitter': '🐦',
-                'TikTok': '🎵'
+                'TikTok': '🎵',
+                'Facebook': '📘'
             };
             select.innerHTML = '<option value="All">👤 Semua Account</option>' +
                 accounts.filter(a => a.account !== 'All').map(a => {
@@ -2510,10 +3200,11 @@
 
         function createCard(media, idx) {
             const icons = {
-                Instagram: '<img src="icons/ig.png" class="platform-icon" alt="IG">',
-                Twitter: '<img src="icons/x.png" class="platform-icon" alt="X">',
-                TikTok: '<img src="icons/tiktok.webp" class="platform-icon" alt="TikTok">'
-            };
+                    Instagram: '<img src="icons/ig.png" class="platform-icon" alt="IG">',
+                    Twitter: '<img src="icons/x.png" class="platform-icon" alt="X">',
+                    TikTok: '<img src="icons/tiktok.webp" class="platform-icon" alt="TikTok">',
+                    Facebook: '<img src="icons/facebook.png" class="platform-icon" alt="FB">'
+                };
             const typeIcon = media.type === 'video' ? '🎬' : '📸';
             const tags = (media.tags || []).map(t => {
                 const jsonTag = JSON.stringify(t);
@@ -2961,12 +3652,14 @@
         async function addSelectionToQueue() {
             if (selectedPaths.size === 0) return;
             const paths = Array.from(selectedPaths);
+            const privacyEl = document.getElementById('selectionPrivacy');
+            const privacy = (privacyEl && privacyEl.value) || 'unlisted';
             const btn = document.getElementById('btnAddToQueue');
             btn.disabled = true;
             btn.textContent = '⏳ Adding...';
             try {
-                const result = await window.go.main.App.AddToYouTubeQueue(paths, 'public');
-                alert(`✅ Added: ${result.added} | Skipped (already): ${result.skipped}`);
+                const result = await window.go.main.App.AddToYouTubeQueue(paths, privacy);
+                alert(`✅ Added: ${result.added} | Skipped (already): ${result.skipped}\n\nPrivacy: ${privacy}`);
                 clearSelection();
                 await updateQueueBadge();
             } catch (e) {
@@ -2991,11 +3684,64 @@
             } catch (e) { console.log('Badge update error:', e); }
         }
 
-        function showQueueModal() {
+                function showQueueModal() {
             document.getElementById('queueModal').classList.add('show');
             refreshQueue();
             refreshWorkerStatus();
+            loadYouTubeHashtags();  // ⚡ NEW
         }
+
+        // ══════════════════════════════════════════════════════
+        // CUSTOM HASHTAGS (global YouTube setting)
+        // ══════════════════════════════════════════════════════
+
+        async function loadYouTubeHashtags() {
+            try {
+                const val = await window.go.main.App.GetYouTubeHashtags();
+                const el = document.getElementById('ytCustomHashtags');
+                if (el) el.value = val || '';
+            } catch (e) {
+                console.log('Load hashtags error:', e);
+            }
+        }
+
+        async function saveYouTubeHashtags() {
+            const el = document.getElementById('ytCustomHashtags');
+            const statusEl = document.getElementById('ytHashtagsStatus');
+            if (!el) return;
+
+            const val = el.value.trim();
+
+            try {
+                const r = await window.go.main.App.SetYouTubeHashtags(val);
+                if (r.ok) {
+                    if (statusEl) {
+                        statusEl.textContent = '✓ Tersimpan';
+                        statusEl.classList.add('show');
+                        setTimeout(() => statusEl.classList.remove('show'), 2000);
+                    }
+                } else {
+                    alert('Error: ' + r.msg);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        // Auto-save saat user menekan Enter
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const el = document.getElementById('ytCustomHashtags');
+                if (el) {
+                    el.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveYouTubeHashtags();
+                        }
+                    });
+                }
+            }, 500);
+        });
 
         function hideQueueModal() {
             document.getElementById('queueModal').classList.remove('show');
@@ -3175,7 +3921,186 @@
         let collapsedGroups = new Set();
         let groupDownloadActive = false;
         let groupDownloadLogBuffer = [];
+        // ══════════════════════════════════════════════════════
+        // PLATFORM METADATA & COUNTERS
+        // ══════════════════════════════════════════════════════
 
+        const PLATFORM_META = {
+            all:       { icon: '📱', labelKey: 'all_platforms' },
+            instagram: { icon: '📷', label: 'Instagram' },
+            tiktok:    { icon: '🎵', label: 'TikTok' },
+            facebook:  { icon: '📘', label: 'Facebook' },
+            twitter:   { icon: '𝕏',  label: 'Twitter' }
+        };
+
+        function getPlatformLabel(p) {
+            const meta = PLATFORM_META[p];
+            if (!meta) return p;
+            if (meta.labelKey) return t(meta.labelKey);
+            return meta.label;
+        };
+
+        function getGroupPlatformCounts(node) {
+            const counts = { instagram: 0, tiktok: 0, facebook: 0, twitter: 0 };
+            function walk(n) {
+                for (const acc of (n.accounts || [])) {
+                    if (counts.hasOwnProperty(acc.platform)) {
+                        counts[acc.platform]++;
+                    }
+                }
+                for (const child of (n.children || [])) walk(child);
+            }
+            walk(node);
+            return counts;
+        }
+
+        // ══════════════════════════════════════════════════════
+        // SPLIT-BUTTON DROPDOWN
+        // ══════════════════════════════════════════════════════
+
+        function toggleDownloadDropdown(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('downloadDropdownMenu');
+            if (!menu) return;
+
+            const isOpen = menu.classList.contains('show');
+            if (isOpen) {
+                menu.classList.remove('show');
+            } else {
+                const node = findGroupNode(selectedGroupId);
+                if (node) renderDownloadDropdown(node);
+                menu.classList.add('show');
+            }
+        }
+
+        function renderDownloadDropdown(node) {
+            const menu = document.getElementById('downloadDropdownMenu');
+            if (!menu) return;
+
+            const counts = getGroupPlatformCounts(node);
+            const totalAccounts = Object.values(counts).reduce((a, b) => a + b, 0);
+
+            const platforms = ['all', 'instagram', 'tiktok', 'facebook', 'twitter'];
+            let html = '';
+
+            platforms.forEach((p) => {
+                const meta = PLATFORM_META[p];
+                const count = (p === 'all') ? totalAccounts : (counts[p] || 0);
+                const disabled = count === 0;
+                const selected = groupDownloadPlatform === p;
+
+                const classes = [
+                    'download-dropdown-item',
+                    selected ? 'selected' : '',
+                    disabled ? 'disabled' : ''
+                ].filter(Boolean).join(' ');
+
+                const clickAttr = disabled ? '' : `onclick="selectDownloadPlatform('${p}')"`;
+
+                html += `
+                    <div class="${classes}" ${clickAttr}>
+                        <span class="item-label">
+                            <span>${meta.icon}</span>
+                            <span>${getPlatformLabel(p)}</span>
+                        </span>
+                        <span class="item-count">${count}</span>
+                    </div>
+                `;
+
+                if (p === 'all') {
+                    html += '<div class="download-dropdown-divider"></div>';
+                }
+            });
+
+            menu.innerHTML = html;
+        }
+        function selectDownloadPlatform(platform) {
+            groupDownloadPlatform = platform;
+
+            const menu = document.getElementById('downloadDropdownMenu');
+            if (menu) menu.classList.remove('show');
+
+            // Update subtitle — hanya ganti tampilan, TIDAK download
+            updateDownloadSplitSubtitle();
+        }
+
+            function updateDownloadSplitSubtitle() {
+            const subEl = document.getElementById('downloadSplitSub');
+            const hintEl = document.getElementById('downloadSplitHint');
+            if (!subEl) return;
+
+            const node = findGroupNode(selectedGroupId);
+            if (!node) return;
+
+            const counts = getGroupPlatformCounts(node);
+            const totalAccounts = Object.values(counts).reduce((a, b) => a + b, 0);
+
+            let count = totalAccounts;
+            if (groupDownloadPlatform !== 'all') {
+                count = counts[groupDownloadPlatform] || 0;
+            }
+
+            const label = getPlatformLabel(groupDownloadPlatform);
+            subEl.textContent = t('cek_accounts_label', {count: count, platform: label});
+
+            if (hintEl) {
+                hintEl.textContent = groupDownloadPlatform === 'all'
+                    ? t('hint_all_platforms')
+                    : t('hint_click_download');
+            }
+        }
+        async function triggerGroupDownload() {
+            if (!selectedGroupId) {
+                alert(t('error') + ': ' + t('group_not_found'));
+                return;
+            }
+
+            const node = findGroupNode(selectedGroupId);
+            if (!node) return;
+
+            const counts = getGroupPlatformCounts(node);
+
+            let platforms;
+            if (groupDownloadPlatform === 'all') {
+                platforms = Object.entries(counts)
+                    .filter(([_, c]) => c > 0)
+                    .map(([p, _]) => p);
+            } else {
+                if ((counts[groupDownloadPlatform] || 0) === 0) {
+                    alert(`⚠️  ${t('no_accounts_hint')} (${getPlatformLabel(groupDownloadPlatform)})`);
+                    return;
+                }
+                platforms = [groupDownloadPlatform];
+            }
+
+            if (platforms.length === 0) {
+                alert(`⚠️  ${t('no_accounts_hint')}`);
+                return;
+            }
+
+            try {
+                const r = await window.go.main.App.StartGroupDownload(selectedGroupId, platforms);
+                if (!r.ok) {
+                    alert(t('error') + ': ' + r.msg);
+                    return;
+                }
+                groupDownloadActive = true;
+                groupDownloadLogBuffer = [];
+                showGroupProgress();
+            } catch (e) {
+                alert(t('error') + ': ' + e.message);
+            }
+        }
+        // Close dropdown saat klik di luar
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('downloadDropdownMenu');
+            if (!menu) return;
+            if (menu.classList.contains('show')) {
+                if (!menu.contains(e.target) && !e.target.closest('.download-split')) {
+                    menu.classList.remove('show');
+                }
+            }
+        });
         function toggleGroupsView() {
             const view = document.getElementById('groupsView');
             if (view.classList.contains('visible')) {
@@ -3196,7 +4121,7 @@
         function renderGroupsTree() {
             const container = document.getElementById('groupsTree');
             if (!groupsTree || groupsTree.length === 0) {
-                container.innerHTML = '<div class="groups-empty">Belum ada group.<br>Klik "+ New Group".</div>';
+                container.innerHTML = `<div class="groups-empty">${t('no_groups_hint')}</div>`;
                 return;
             }
             container.innerHTML = groupsTree.map(n => renderGroupNode(n, 0)).join('');
@@ -3267,56 +4192,94 @@
             await renderGroupDetail(id);
         }
 
+        // ⚡ Track group terakhir supaya reset pilihan saat ganti group
+                let _lastRenderedGroupId = null;
+        let groupDownloadPlatform = 'all';
+
         async function renderGroupDetail(groupId) {
             const main = document.getElementById('groupsMain');
             const node = findGroupNode(groupId);
             if (!node) {
-                main.innerHTML = '<div class="groups-placeholder"><div style="font-size:4rem;">❓</div><p>Group tidak ditemukan</p></div>';
+                main.innerHTML = `<div class="groups-placeholder"><div style="font-size:4rem;">❓</div><p>${t('group_not_found')}</p></div>`;
                 return;
             }
+
+            if (_lastRenderedGroupId !== groupId) {
+                groupDownloadPlatform = 'all';
+                _lastRenderedGroupId = groupId;
+            }
+
             let runs = [];
             try { runs = await window.go.main.App.GetGroupRuns(groupId, 10); } catch (e) {}
+
             const totalAccounts = countAccountsRecursive(node);
             const totalMembers = (node.children || []).length;
+            const counts = getGroupPlatformCounts(node);
+
+            let selectedCount = totalAccounts;
+            if (groupDownloadPlatform !== 'all') {
+                selectedCount = counts[groupDownloadPlatform] || 0;
+            }
+
+            const platformLabel = getPlatformLabel(groupDownloadPlatform);
+            const disabledClass = totalAccounts === 0 ? 'disabled' : '';
 
             main.innerHTML = `
                 <div class="group-detail-header">
                     <div class="group-detail-icon">${node.icon}</div>
                     <div class="group-detail-title">
                         <h2>${escapeHtml(node.name)}</h2>
-                        <div class="meta">${totalMembers} member • ${totalAccounts} akun</div>
+                        <div class="meta">${t('members_count', {count: totalMembers})} • ${t('accounts_count', {count: totalAccounts})}</div>
                     </div>
                 </div>
 
                 <div class="group-action-bar">
-                    <button class="btn-download-new" onclick="showDownloadGroupModal(${groupId})" ${totalAccounts === 0 ? 'disabled' : ''}>
-                        📥 Download New Posts
-                        <span class="sub">Cek ${totalAccounts} akun, download yang belum ada</span>
-                    </button>
+                    <div class="download-split ${disabledClass}" id="downloadSplitBtn">
+                        <button class="download-split-main"
+                                onclick="triggerGroupDownload()"
+                                ${totalAccounts === 0 ? 'disabled' : ''}>
+                            ${t('download_new_posts')}
+                            <span class="sub" id="downloadSplitSub">
+                                ${t('cek_accounts_label', {count: selectedCount, platform: platformLabel})}
+                            </span>
+                            <span class="sub" id="downloadSplitHint" style="opacity: 0.7; font-size: 0.7rem;">
+                                ${groupDownloadPlatform === 'all' ? t('hint_all_platforms') : t('hint_click_download')}
+                            </span>
+                        </button>
+                        <button class="download-split-caret"
+                                onclick="toggleDownloadDropdown(event)"
+                                ${totalAccounts === 0 ? 'disabled' : ''}
+                                title="${t('group_dl_platforms')}">
+                            ▼
+                        </button>
+                        <div class="download-dropdown-menu" id="downloadDropdownMenu">
+                            <!-- Filled by JS -->
+                        </div>
+                    </div>
                     <button class="btn" onclick="showCreateGroupModal(${groupId})" style="background: #16a34a;">
-                        ➕ Add Member
+                        ${t('add_member')}
                     </button>
                     <button class="btn" onclick="showAddAccountModal(${groupId})" style="background: #2563eb;">
-                        🔗 Add Account
+                        ${t('add_account')}
                     </button>
                 </div>
 
                 <div class="group-progress" id="groupProgress">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                        <span style="font-size:0.85rem; color:var(--text-muted);" id="groupProgressLabel">Processing...</span>
-                        <button class="btn" onclick="stopGroupDownload()" style="background:#7f1d1d; padding:4px 12px; font-size:0.8rem;">⏸ Stop</button>
+                        <span style="font-size:0.85rem; color:var(--text-muted);" id="groupProgressLabel">${t('processing')}</span>
+                        <button class="btn" onclick="stopGroupDownload()" style="background:#7f1d1d; padding:4px 12px; font-size:0.8rem;">${t('stop_worker')}</button>
                     </div>
                     <div class="group-progress-bar"><div class="group-progress-fill" id="groupProgressFill"></div></div>
                     <div class="group-progress-log" id="groupProgressLog"></div>
                 </div>
 
                 ${(node.accounts && node.accounts.length > 0) || (node.children && node.children.length > 0) ? `
-                <div class="group-section-title">Members & Accounts</div>
+                <div class="group-section-title">${t('members_accounts')}</div>
                 <div class="member-list">${renderMemberList(node)}</div>
                 ` : ''}
 
                 ${runs.length > 0 ? `
-                <div class="group-section-title">History</div>
+                <div class="group-section-title">${t('history')}</div>
                 <div class="run-history">${runs.map(r => renderRunItem(r)).join('')}</div>
                 ` : ''}
             `;
@@ -3348,30 +4311,29 @@
                                 <span>${escapeHtml(child.name)}</span>
                             </div>
                             <div class="member-accounts">
-                                ${childAccounts || '<span style="color:#666; font-size:0.8rem; margin-left:8px;">Belum ada akun</span>'}
+                                ${childAccounts || `<span style="color:#666; font-size:0.8rem; margin-left:8px;">${t('no_accounts_hint')}</span>`}
                             </div>
                         </div>
                         <div class="member-actions">
-                            <button onclick="showAddAccountModal(${child.id})" title="Add account">🔗</button>
-                            <button onclick="showEditGroupModal(${child.id})" title="Edit">✏️</button>
-                            <button onclick="deleteGroup(${child.id})" title="Delete">🗑</button>
+                            <button onclick="showAddAccountModal(${child.id})" title="${t('add_account')}">🔗</button>
+                            <button onclick="showEditGroupModal(${child.id})" title="${t('edit')}">✏️</button>
+                            <button onclick="deleteGroup(${child.id})" title="${t('delete')}">🗑</button>
                         </div>
                     </div>
                 `;
             }
             return html;
         }
-
         function renderAccountRow(acc) {
-            const icons = { instagram: '📷', tiktok: '🎵', twitter: '𝕏' };
+            const icons = { instagram: '📷', tiktok: '🎵', twitter: '𝕏', facebook: '📘' };
             const statusClass = acc.enabled ? '' : 'disabled';
-            const lastCheck = acc.last_check_at ? formatRelativeTime(acc.last_check_at) : 'never';
+            const lastCheck = acc.last_check_at ? formatRelativeTime(acc.last_check_at) : t('never');
             return `
                 <div class="account-row">
                     <span class="status-dot ${statusClass}"></span>
                     <span class="platform-badge">${icons[acc.platform] || '?'} ${acc.platform}</span>
                     <span class="username">@${escapeHtml(acc.username)}</span>
-                    <span style="color:#666; font-size:0.75rem;">• last: ${lastCheck}</span>
+                    <span style="color:#666; font-size:0.75rem;">• ${t('last_check', {time: lastCheck})}</span>
                     <button onclick="editAccount(${acc.id})" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:0.75rem;">✏️</button>
                     <button onclick="removeAccount(${acc.id})" style="background:transparent;border:none;color:#888;cursor:pointer;font-size:0.75rem;">🗑</button>
                 </div>
@@ -3408,7 +4370,8 @@
 
         // ─── GROUP EDIT MODAL ───
         function showCreateGroupModal(parentId) {
-            document.getElementById('groupEditTitle').textContent = parentId ? '➕ New Member' : '➕ New Group';
+            document.getElementById('groupEditTitle').textContent =
+                parentId ? t('new_member_title') : t('new_group_title');
             document.getElementById('groupEditId').value = '';
             document.getElementById('groupEditParentId').value = parentId || '';
             document.getElementById('groupEditName').value = '';
@@ -3417,7 +4380,7 @@
             const info = document.getElementById('groupEditParentInfo');
             if (parentId) {
                 const parent = findGroupNode(parentId);
-                info.textContent = `Parent: ${parent ? parent.name : '?'}`;
+                info.textContent = t('field_parent', {name: parent ? parent.name : '?'});
             } else {
                 info.textContent = '';
             }
@@ -3427,7 +4390,7 @@
         function showEditGroupModal(id) {
             const node = findGroupNode(id);
             if (!node) return;
-            document.getElementById('groupEditTitle').textContent = '✏️ Edit Group';
+            document.getElementById('groupEditTitle').textContent = t('edit_group_title');
             document.getElementById('groupEditId').value = id;
             document.getElementById('groupEditParentId').value = node.parent_id || '';
             document.getElementById('groupEditName').value = node.name;
@@ -3447,39 +4410,38 @@
             const name = document.getElementById('groupEditName').value.trim();
             const icon = document.getElementById('groupEditIcon').value || '👤';
             const color = document.getElementById('groupEditColor').value;
-            if (!name) { alert('Nama wajib diisi'); return; }
+            if (!name) { alert(t('err_name_required')); return; }
             try {
                 if (id) {
                     await window.go.main.App.UpdateGroup(parseInt(id), name, icon, color);
                 } else {
                     const pid = parentId ? parseInt(parentId) : 0;
                     const r = await window.go.main.App.CreateGroup(name, pid);
-                    if (!r.ok) { alert('Error: ' + r.msg); return; }
+                    if (!r.ok) { alert(t('error') + ': ' + r.msg); return; }
                 }
                 hideGroupEditModal();
                 await loadGroupsTree();
                 await loadGroupOptions();
                 if (selectedGroupId) await renderGroupDetail(selectedGroupId);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { alert(t('error') + ': ' + e.message); }
         }
-
         async function deleteGroup(id) {
-            if (!confirm('Hapus group beserta semua sub-group dan akun di dalamnya?')) return;
+            if (!confirm(t('confirm_delete_group'))) return;
             try {
                 await window.go.main.App.DeleteGroup(id);
                 if (selectedGroupId === id) {
                     selectedGroupId = null;
                     document.getElementById('groupsMain').innerHTML =
-                        '<div class="groups-placeholder"><div style="font-size:4rem;">👥</div><p>Pilih group di sidebar</p></div>';
+                        `<div class="groups-placeholder"><div style="font-size:4rem;">👥</div><p>${t('select_group_hint')}</p></div>`;
                 }
                 await loadGroupsTree();
-                await loadGroupOptions();      // ← TAMBAH
+                await loadGroupOptions();
                 const gf = document.getElementById('groupFilter');
                 if (gf && parseInt(gf.value) === id) {
                     gf.value = '0';
                     applyFilters();
                 }
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { alert(t('error') + ': ' + e.message); }
         }
 
         // ══════════════════════════════════════════════════════
@@ -3524,8 +4486,8 @@
             if (filtered.length === 0) {
                 emptyEl.style.display = 'block';
                 emptyEl.textContent = accounts.length === 0
-                    ? 'Tidak ada existing account'
-                    : 'Tidak ada yang cocok';
+                    ? t('no_existing_accounts')
+                    : t('no_matching');
                 return;
             }
             emptyEl.style.display = 'none';
@@ -3541,7 +4503,6 @@
                 listEl.appendChild(item);
             });
         }
-
         function showAccountDropdown() {
             const listEl = document.getElementById('accountDropdownList');
             const input = document.getElementById('accountEditUsername');
@@ -3561,7 +4522,7 @@
         }
 
         function showAddAccountModal(groupId) {
-            document.getElementById('accountEditTitle').textContent = '➕ Add Account';
+            document.getElementById('accountEditTitle').textContent = t('add_account_title');
             document.getElementById('accountEditId').value = '';
             document.getElementById('accountEditGroupId').value = groupId;
             document.getElementById('accountEditPlatform').value = 'instagram';
@@ -3590,7 +4551,7 @@
             acc = walk(groupsTree);
             if (!acc) return;
 
-            document.getElementById('accountEditTitle').textContent = '✏️ Edit Account';
+            document.getElementById('accountEditTitle').textContent = t('edit_account_title');
             document.getElementById('accountEditId').value = accId;
             document.getElementById('accountEditGroupId').value = acc.group_id;
             document.getElementById('accountEditPlatform').value = acc.platform;
@@ -3607,33 +4568,32 @@
             document.getElementById('accountEditPlatform').disabled = false;
         }
 
-        async function saveAccountEdit() {
+         async function saveAccountEdit() {
             const id = document.getElementById('accountEditId').value;
             const groupId = parseInt(document.getElementById('accountEditGroupId').value);
             const platform = document.getElementById('accountEditPlatform').value;
             const username = document.getElementById('accountEditUsername').value.trim().replace(/^@/, '');
             const enabled = document.getElementById('accountEditEnabled').checked;
-            if (!username) { alert('Username wajib diisi'); return; }
+            if (!username) { alert(t('err_username_required')); return; }
             try {
                 if (id) {
                     await window.go.main.App.UpdateAccount(parseInt(id), username, enabled);
                 } else {
                     const r = await window.go.main.App.AddAccount(groupId, platform, username);
-                    if (!r.ok) { alert('Error: ' + r.msg); return; }
+                    if (!r.ok) { alert(t('error') + ': ' + r.msg); return; }
                 }
                 hideAccountEditModal();
                 await loadGroupsTree();
                 if (selectedGroupId) await renderGroupDetail(selectedGroupId);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { alert(t('error') + ': ' + e.message); }
         }
-
         async function removeAccount(accId) {
-            if (!confirm('Hapus akun ini?')) return;
+            if (!confirm(t('confirm_delete_account'))) return;
             try {
                 await window.go.main.App.RemoveAccount(accId);
                 await loadGroupsTree();
                 if (selectedGroupId) await renderGroupDetail(selectedGroupId);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { alert(t('error') + ': ' + e.message); }
         }
 
         // ══════════════════════════════════════════════════════
@@ -3800,26 +4760,98 @@
         let mdlLogBuffer = [];
         let mdlRunning = false;
 
-        function showManualDownloadModal() {
+        async function showManualDownloadModal() {
             document.getElementById('manualDownloadModal').classList.add('show');
-            // Reset
-            mdlLogBuffer = [];
-            document.getElementById('mdlProgress').style.display = 'none';
-            document.getElementById('mdlProgressLog').textContent = '';
-            document.getElementById('mdlProgressFill').style.width = '0%';
-            document.getElementById('mdlFooterStatus').textContent = '';
+
+            // ⚡ Cek apakah worker masih berjalan
+            let isRunning = mdlRunning;
+            try {
+                const status = await window.go.main.App.GetManualDownloadStatus();
+                isRunning = !!(status && status.running);
+            } catch (e) {
+                console.log('Check manual download status error:', e);
+            }
+
+            if (isRunning) {
+                // ══════════════════════════════════════════════
+                // ⚡ RESTORE: worker masih jalan → restore UI + log
+                // ══════════════════════════════════════════════
+                mdlRunning = true;
+
+                document.getElementById('mdlProgress').style.display = 'block';
+                document.getElementById('mdlStartBtn').style.display = 'none';
+                document.getElementById('mdlStopBtn').style.display = 'inline-block';
+                document.getElementById('mdlCancelBtn').textContent = 'Close';
+
+                // Restore log dari buffer in-memory
+                const logEl = document.getElementById('mdlProgressLog');
+                if (logEl && mdlLogBuffer.length > 0) {
+                    logEl.textContent = mdlLogBuffer.slice(-300).join('\n');
+                    logEl.scrollTop = logEl.scrollHeight;
+
+                    // Restore progress bar dari log terakhir yang punya [N/M]
+                    for (let i = mdlLogBuffer.length - 1; i >= 0; i--) {
+                        const m = mdlLogBuffer[i].match(/\[(\d+)\/(\d+)\]/);
+                        if (m) {
+                            const cur = parseInt(m[1]);
+                            const tot = parseInt(m[2]);
+                            const pct = (cur / tot) * 100;
+                            document.getElementById('mdlProgressFill').style.width = pct + '%';
+                            document.getElementById('mdlProgressPercent').textContent =
+                                pct.toFixed(0) + '%';
+                            document.getElementById('mdlProgressLabel').textContent =
+                                `Processing ${cur}/${tot}...`;
+                            break;
+                        }
+                    }
+                }
+
+                // Lock inputs (worker still running)
+                document.getElementById('mdlUsernames').disabled = true;
+                document.querySelectorAll('.mdl-tab').forEach(t => {
+                    if (t.dataset.platform !== 'twitter') t.disabled = true;
+                });
+
+                // Restore footer status
+                const footerStatus = document.getElementById('mdlFooterStatus');
+                if (footerStatus && !footerStatus.textContent) {
+                    footerStatus.textContent = 'Running...';
+                }
+
+            } else {
+                // ══════════════════════════════════════════════
+                // FRESH OPEN — reset semua state
+                // ══════════════════════════════════════════════
+                mdlRunning = false;
+                mdlLogBuffer = [];
+
+                document.getElementById('mdlProgress').style.display = 'none';
+                document.getElementById('mdlProgressLog').textContent = '';
+                document.getElementById('mdlProgressFill').style.width = '0%';
+                document.getElementById('mdlProgressPercent').textContent = '0%';
+                document.getElementById('mdlProgressLabel').textContent = 'Processing...';
+                document.getElementById('mdlFooterStatus').textContent = '';
+                document.getElementById('mdlStartBtn').style.display = 'inline-block';
+                document.getElementById('mdlStopBtn').style.display = 'none';
+                document.getElementById('mdlCancelBtn').textContent = 'Cancel';
+                document.getElementById('mdlUsernames').disabled = false;
+                document.querySelectorAll('.mdl-tab').forEach(t => {
+                    if (t.dataset.platform !== 'twitter') t.disabled = false;
+                });
+
+                // Focus textarea hanya saat fresh open
+                setTimeout(() => {
+                    const ta = document.getElementById('mdlUsernames');
+                    if (ta) ta.focus();
+                }, 100);
+            }
+
             updateMdlUserCount();
-
-            // Focus ke textarea
-            setTimeout(() => {
-                const ta = document.getElementById('mdlUsernames');
-                if (ta) ta.focus();
-            }, 100);
         }
-
         function hideManualDownloadModal() {
+            // ⚡ Kalau worker jalan, konfirmasi dulu
             if (mdlRunning) {
-                if (!confirm('Download sedang berjalan. Tutup modal? (worker tetap jalan di background)')) {
+                if (!confirm('Download sedang berjalan.\n\nTutup modal? Worker tetap jalan di background — klik "📥 Download" lagi untuk melihat progress.')) {
                     return;
                 }
             }
@@ -3981,7 +5013,7 @@
                     return;
                 }
 
-                // UI feedback: lock inputs, show progress
+                               // UI feedback: lock inputs, show progress
                 mdlRunning = true;
                 mdlLogBuffer = [];
                 document.getElementById('mdlProgress').style.display = 'block';
@@ -3995,6 +5027,13 @@
                 document.getElementById('mdlFooterStatus').textContent =
                     `Running: ${items.length} ${mdlCurrentPlatform === 'facebook' ? 'Page' : 'user'}`;
 
+                // ⚡ NEW: Beri tahu user bahwa modal bisa ditutup
+                setTimeout(() => {
+                    const label = document.getElementById('mdlProgressLabel');
+                    if (label && label.textContent === 'Starting...') {
+                        label.textContent = 'Processing... (bisa ditutup, worker jalan di background)';
+                    }
+                }, 3000);
                 // Lock inputs
                 document.getElementById('mdlUsernames').disabled = true;
                 document.querySelectorAll('.mdl-tab').forEach(t => {
@@ -4014,50 +5053,65 @@
             }
         }
 
-        // Event listeners untuk worker
+               // Event listeners untuk worker
         if (window.runtime) {
             window.runtime.EventsOn('manualDownloadLog', (line) => {
+                // ⚡ Selalu push ke buffer (untuk restore saat modal dibuka ulang)
                 mdlLogBuffer.push(line);
                 if (mdlLogBuffer.length > 1000) mdlLogBuffer.shift();
 
-                const logEl = document.getElementById('mdlProgressLog');
-                if (logEl) {
-                    logEl.textContent = mdlLogBuffer.slice(-300).join('\n');
-                    logEl.scrollTop = logEl.scrollHeight;
-                }
+                // ⚡ Update DOM hanya kalau modal sedang terbuka
+                const modal = document.getElementById('manualDownloadModal');
+                const isModalOpen = modal && modal.classList.contains('show');
 
-                // Parse progress: "[3/8]"
-                const m = line.match(/\[(\d+)\/(\d+)\]/);
-                if (m) {
-                    const cur = parseInt(m[1]);
-                    const tot = parseInt(m[2]);
-                    const pct = (cur / tot) * 100;
-                    const fill = document.getElementById('mdlProgressFill');
-                    const pctEl = document.getElementById('mdlProgressPercent');
-                    const label = document.getElementById('mdlProgressLabel');
-                    if (fill) fill.style.width = pct + '%';
-                    if (pctEl) pctEl.textContent = pct.toFixed(0) + '%';
-                    if (label) label.textContent = `Processing ${cur}/${tot}...`;
+                if (isModalOpen) {
+                    const logEl = document.getElementById('mdlProgressLog');
+                    if (logEl) {
+                        logEl.textContent = mdlLogBuffer.slice(-300).join('\n');
+                        logEl.scrollTop = logEl.scrollHeight;
+                    }
+
+                    // Parse progress "[N/M]"
+                    const m = line.match(/\[(\d+)\/(\d+)\]/);
+                    if (m) {
+                        const cur = parseInt(m[1]);
+                        const tot = parseInt(m[2]);
+                        const pct = (cur / tot) * 100;
+                        const fill = document.getElementById('mdlProgressFill');
+                        const pctEl = document.getElementById('mdlProgressPercent');
+                        const label = document.getElementById('mdlProgressLabel');
+                        if (fill) fill.style.width = pct + '%';
+                        if (pctEl) pctEl.textContent = pct.toFixed(0) + '%';
+                        if (label) label.textContent = `Processing ${cur}/${tot}...`;
+                    }
                 }
             });
 
             window.runtime.EventsOn('manualDownloadDone', (success) => {
                 mdlRunning = false;
-                const label = document.getElementById('mdlProgressLabel');
-                if (label) label.textContent = success ? '✅ Selesai' : '⏸️ Dihentikan';
-                const fill = document.getElementById('mdlProgressFill');
-                if (fill) fill.style.width = '100%';
 
-                document.getElementById('mdlStartBtn').style.display = 'inline-block';
-                document.getElementById('mdlStopBtn').style.display = 'none';
-                document.getElementById('mdlCancelBtn').textContent = 'Close';
-                document.getElementById('mdlFooterStatus').textContent = success ? 'Success' : 'Stopped';
+                // ⚡ Update DOM hanya kalau modal terbuka
+                const modal = document.getElementById('manualDownloadModal');
+                const isModalOpen = modal && modal.classList.contains('show');
 
-                // Unlock inputs
-                document.getElementById('mdlUsernames').disabled = false;
-                document.querySelectorAll('.mdl-tab').forEach(t => {
-                    if (t.dataset.platform !== 'twitter') t.disabled = false;
-                });
+                if (isModalOpen) {
+                    const label = document.getElementById('mdlProgressLabel');
+                    if (label) label.textContent = success ? '✅ Selesai' : '⏸️ Dihentikan';
+                    const fill = document.getElementById('mdlProgressFill');
+                    if (fill) fill.style.width = '100%';
+
+                    document.getElementById('mdlStartBtn').style.display = 'inline-block';
+                    document.getElementById('mdlStopBtn').style.display = 'none';
+                    document.getElementById('mdlCancelBtn').textContent = 'Close';
+                    document.getElementById('mdlFooterStatus').textContent =
+                        success ? 'Success' : 'Stopped';
+
+                    // Unlock inputs
+                    document.getElementById('mdlUsernames').disabled = false;
+                    document.querySelectorAll('.mdl-tab').forEach(t => {
+                        if (t.dataset.platform !== 'twitter') t.disabled = false;
+                    });
+                }
 
                 // Refresh grid supaya file baru muncul
                 setTimeout(() => loadData(), 1000);
@@ -4223,7 +5277,7 @@
             // Platform
             const platform = document.getElementById('platformFilter').value;
             if (platform && platform !== 'All') {
-                const icons = { 'Instagram': '📷', 'Twitter': '🐦', 'TikTok': '🎵' };
+                const icons = { 'Instagram': '📷', 'Twitter': '🐦', 'TikTok': '🎵', 'Facebook': '📘' };
                 chips.push({
                     label: `${icons[platform] || ''} ${platform}`,
                     clear: () => {

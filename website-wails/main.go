@@ -331,6 +331,7 @@ type PathConfig struct {
 	OldTwitter     string
 	OldInstagram   string
 	OldTikTok      string
+	Facebook       string // ✅ NEW
 }
 
 func loadPathsConfig(exeDir string) PathConfig {
@@ -340,7 +341,8 @@ func loadPathsConfig(exeDir string) PathConfig {
 	f, err := os.Open(path)
 	if err != nil {
 		LogDebug("❌ paths.txt tidak ditemukan di: " + path)
-		return cfg
+		// ⚡ Fallback: coba derive dari exeDir
+		return deriveDefaults(cfg, exeDir)
 	}
 	defer f.Close()
 
@@ -368,6 +370,18 @@ func loadPathsConfig(exeDir string) PathConfig {
 			cfg.OldInstagram = val
 		case "old_tiktok":
 			cfg.OldTikTok = val
+		case "facebook_download":
+			cfg.Facebook = val
+		}
+	}
+
+	// ⚡ AUTO-DERIVE: Kalau facebook_download kosong tapi python_download di-set,
+	// coba derive dari {python_download}/facebook
+	if cfg.Facebook == "" && cfg.PythonDownload != "" {
+		candidate := cfg.PythonDownload + "/facebook"
+		if _, err := os.Stat(candidate); err == nil {
+			cfg.Facebook = candidate
+			LogDebug("   ✅ Facebook auto-derived: " + candidate)
 		}
 	}
 
@@ -375,6 +389,29 @@ func loadPathsConfig(exeDir string) PathConfig {
 	LogDebug("   old_twitter = " + cfg.OldTwitter)
 	LogDebug("   old_instagram = " + cfg.OldInstagram)
 	LogDebug("   old_tiktok = " + cfg.OldTikTok)
+	LogDebug("   facebook_download = " + cfg.Facebook)
+	return cfg
+}
+
+// deriveDefaults — dipakai kalau paths.txt tidak ada sama sekali
+func deriveDefaults(cfg PathConfig, exeDir string) PathConfig {
+	// Coba beberapa lokasi standar untuk python_download
+	candidates := []string{
+		filepath.Join(exeDir, "..", "IG_GUI_v2", "Download"),
+		filepath.Join(exeDir, "..", "..", "IG_GUI_v2", "Download"),
+		filepath.Join(exeDir, "..", "..", "..", "IG_GUI_v2", "Download"),
+		`C:\Users\User\karil\IG_GUI_v2\Download`,
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			cfg.PythonDownload = c
+			fbCandidate := filepath.Join(c, "facebook")
+			if _, err := os.Stat(fbCandidate); err == nil {
+				cfg.Facebook = fbCandidate
+			}
+			break
+		}
+	}
 	return cfg
 }
 
@@ -413,19 +450,19 @@ type App struct {
 	translateMu       sync.Mutex
 	cacheFilePath     string
 
-	// YouTube worker
 	ytWorkerCmd *exec.Cmd
 	ytWorkerMu  sync.Mutex
 
-	// Group worker
 	groupWorkerCmd     *exec.Cmd
 	groupWorkerMu      sync.Mutex
 	groupWorkerRunID   int
 	groupWorkerGroupID int
 
-	// Manual download worker
 	manualDlCmd *exec.Cmd
 	manualDlMu  sync.Mutex
+
+	// ⚡ NEW: mencegah concurrent reindex
+	reindexMu sync.Mutex
 }
 
 func NewApp() *App {
@@ -463,8 +500,8 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.connectDB()
 	a.ensureQueueTable()
+	a.migrateAddUniquePath() // ✅ NEW: Migrasi unique constraint
 
-	// ⚡ Auto cleanup orphan data dari versi sebelumnya
 	if r := a.CleanupOrphanGroups(); r["ok"] == true {
 		if g, _ := r["groups"].(int64); g > 0 {
 			LogDebug(fmt.Sprintf("🧹 Cleaned %d orphan groups saat startup", g))
@@ -475,7 +512,6 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	// Kill YouTube worker tree
 	a.ytWorkerMu.Lock()
 	if a.ytWorkerCmd != nil && a.ytWorkerCmd.Process != nil {
 		pid := a.ytWorkerCmd.Process.Pid
@@ -483,7 +519,6 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 	a.ytWorkerMu.Unlock()
 
-	// Kill Group worker tree
 	a.groupWorkerMu.Lock()
 	if a.groupWorkerCmd != nil && a.groupWorkerCmd.Process != nil {
 		pid := a.groupWorkerCmd.Process.Pid
@@ -491,7 +526,6 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 	a.groupWorkerMu.Unlock()
 
-	// Kill Manual download worker tree
 	a.manualDlMu.Lock()
 	if a.manualDlCmd != nil && a.manualDlCmd.Process != nil {
 		pid := a.manualDlCmd.Process.Pid
@@ -525,6 +559,40 @@ func (a *App) connectDB() error {
 		}
 	}
 	return fmt.Errorf("database not found")
+}
+
+// migrateAddUniquePath — Senior approach: aman, idempotent, tidak destroy data
+func (a *App) migrateAddUniquePath() {
+	if a.db == nil {
+		return
+	}
+
+	// Cek apakah index unique sudah ada
+	var count int
+	err := a.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master 
+		WHERE type='index' AND name='idx_media_fullpath_unique'`).Scan(&count)
+	if err == nil && count > 0 {
+		return // sudah ada
+	}
+
+	LogDebug("🔧 Migration: adding UNIQUE constraint on full_path...")
+
+	// Hapus duplikat dulu (keep yang terkecil id-nya)
+	_, err = a.db.Exec(`DELETE FROM media WHERE id NOT IN (
+		SELECT MIN(id) FROM media GROUP BY full_path
+	)`)
+	if err != nil {
+		LogDebug("⚠️  Dedup error: " + err.Error())
+	}
+
+	// Buat unique index
+	_, err = a.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_media_fullpath_unique 
+		ON media(full_path)`)
+	if err != nil {
+		LogDebug("⚠️  Unique index error: " + err.Error())
+	} else {
+		LogDebug("✅ Unique index created")
+	}
 }
 
 func (a *App) ensureQueueTable() {
@@ -589,6 +657,11 @@ func (a *App) ensureQueueTable() {
 			started_at TEXT,
 			finished_at TEXT,
 			FOREIGN KEY (group_id) REFERENCES idol_groups(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS app_settings (
+			key TEXT PRIMARY KEY,
+			value TEXT,
+			updated_at TEXT
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_idol_groups_parent ON idol_groups(parent_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_idol_accounts_group ON idol_accounts(group_id)`,
@@ -658,7 +731,6 @@ func (a *App) GetMedia(platform, mediaType, account, year, month, day, tag, sear
 		p := "%" + search + "%"
 		args = append(args, p, p, p)
 	}
-	// ⚡ Filter by Group (dengan rekursi ke sub-group)
 	if groupID > 0 {
 		groupIDs := a.getDescendantGroupIDs(groupID)
 		if len(groupIDs) > 0 {
@@ -1062,6 +1134,57 @@ func (a *App) AddToYouTubeQueue(videoPaths []string, privacy string) map[string]
 	return result
 }
 
+// ══════════════════════════════════════════════════════════
+// APP SETTINGS — Global key-value store
+// ══════════════════════════════════════════════════════════
+
+func (a *App) GetYouTubeHashtags() string {
+	if a.db == nil {
+		return ""
+	}
+	var val string
+	err := a.db.QueryRow(
+		"SELECT value FROM app_settings WHERE key='youtube_custom_hashtags'",
+	).Scan(&val)
+	if err != nil {
+		return ""
+	}
+	return val
+}
+
+func (a *App) SetYouTubeHashtags(hashtags string) map[string]interface{} {
+	res := map[string]interface{}{"ok": false, "msg": ""}
+	if a.db == nil {
+		res["msg"] = "DB not connected"
+		return res
+	}
+
+	// Normalisasi: trim, buang spasi berlebih
+	hashtags = strings.TrimSpace(hashtags)
+	// Batasi panjang wajar (biar tidak abuse)
+	if len(hashtags) > 500 {
+		hashtags = hashtags[:500]
+	}
+
+	_, err := a.db.Exec(`
+		INSERT INTO app_settings (key, value, updated_at)
+		VALUES ('youtube_custom_hashtags', ?, datetime('now'))
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
+			updated_at = excluded.updated_at
+	`, hashtags)
+
+	if err != nil {
+		res["msg"] = err.Error()
+		return res
+	}
+
+	res["ok"] = true
+	res["msg"] = "Saved"
+	res["value"] = hashtags
+	return res
+}
+
 func firstLine(s string, maxLen int) string {
 	if s == "" {
 		return ""
@@ -1281,6 +1404,7 @@ func (a *App) GetYouTubeWorkerStatus() map[string]interface{} {
 	}
 	return map[string]interface{}{"running": running, "pid": pid}
 }
+
 func (a *App) getDescendantGroupIDs(rootID int) []int {
 	ids := []int{rootID}
 	if a.db == nil {
@@ -1352,10 +1476,9 @@ func (a *App) GetGroupTree() []GroupNode {
 		return roots
 	}
 
-	// ⚡ Build map + child index
 	groups := map[int]*GroupNode{}
 	order := []int{}
-	childIDs := map[int][]int{} // parent_id → [child_id...]
+	childIDs := map[int][]int{}
 
 	for rows.Next() {
 		g := &GroupNode{}
@@ -1372,7 +1495,6 @@ func (a *App) GetGroupTree() []GroupNode {
 	}
 	rows.Close()
 
-	// Load accounts
 	accRows, err := a.db.Query(`
 		SELECT id, group_id, platform, username, COALESCE(enabled,1),
 		       COALESCE(last_check_at,''), COALESCE(last_download_at,'')
@@ -1393,7 +1515,6 @@ func (a *App) GetGroupTree() []GroupNode {
 		accRows.Close()
 	}
 
-	// ⚡ Build child index (parent_id → [child_ids])
 	for _, id := range order {
 		g := groups[id]
 		if g.ParentID != nil {
@@ -1401,7 +1522,6 @@ func (a *App) GetGroupTree() []GroupNode {
 		}
 	}
 
-	// ⚡ Recursive builder — bangun children DULU, baru parent
 	var buildNode func(id int) GroupNode
 	buildNode = func(id int) GroupNode {
 		g := groups[id]
@@ -1413,22 +1533,19 @@ func (a *App) GetGroupTree() []GroupNode {
 			ParentID:  g.ParentID,
 			SortOrder: g.SortOrder,
 			Children:  []GroupNode{},
-			Accounts:  g.Accounts, // copy accounts slice (aman)
+			Accounts:  g.Accounts,
 		}
-		// Build children secara rekursif — INI KUNCINYA
 		for _, childID := range childIDs[id] {
 			node.Children = append(node.Children, buildNode(childID))
 		}
 		return node
 	}
 
-	// ⚡ Build roots
 	for _, id := range order {
 		g := groups[id]
 		if g.ParentID == nil {
 			roots = append(roots, buildNode(id))
 		} else if _, ok := groups[*g.ParentID]; !ok {
-			// Orphan (parent tidak ada) → taruh di root
 			roots = append(roots, buildNode(id))
 		}
 	}
@@ -1489,23 +1606,19 @@ func (a *App) DeleteGroup(id int) error {
 		return fmt.Errorf("DB not connected")
 	}
 
-	// ⚡ Manual cascade — SQLite FK tidak reliable di connection pool
 	descendants := a.getDescendantGroupIDs(id)
 
 	LogDebug(fmt.Sprintf("🗑️  Delete group %d + %d descendants: %v",
 		id, len(descendants)-1, descendants))
 
-	// 1. Delete accounts
 	for _, gid := range descendants {
 		a.db.Exec("DELETE FROM idol_accounts WHERE group_id = ?", gid)
 	}
 
-	// 2. Delete runs
 	for _, gid := range descendants {
 		a.db.Exec("DELETE FROM idol_group_runs WHERE group_id = ?", gid)
 	}
 
-	// 3. Delete children first (reverse order)
 	for i := len(descendants) - 1; i >= 0; i-- {
 		a.db.Exec("DELETE FROM idol_groups WHERE id = ?", descendants[i])
 	}
@@ -1514,7 +1627,6 @@ func (a *App) DeleteGroup(id int) error {
 	return nil
 }
 
-// CleanupOrphanGroups — hapus data yang tidak punya parent valid
 func (a *App) CleanupOrphanGroups() map[string]interface{} {
 	res := map[string]interface{}{"ok": false, "groups": 0, "accounts": 0, "runs": 0}
 
@@ -1523,7 +1635,6 @@ func (a *App) CleanupOrphanGroups() map[string]interface{} {
 		return res
 	}
 
-	// 1. Hapus accounts yang group_id-nya tidak ada di idol_groups
 	r1, _ := a.db.Exec(`
 		DELETE FROM idol_accounts
 		WHERE group_id NOT IN (SELECT id FROM idol_groups)
@@ -1533,7 +1644,6 @@ func (a *App) CleanupOrphanGroups() map[string]interface{} {
 		n1, _ = r1.RowsAffected()
 	}
 
-	// 2. Hapus runs yang group_id-nya tidak ada
 	r2, _ := a.db.Exec(`
 		DELETE FROM idol_group_runs
 		WHERE group_id NOT IN (SELECT id FROM idol_groups)
@@ -1543,7 +1653,6 @@ func (a *App) CleanupOrphanGroups() map[string]interface{} {
 		n2, _ = r2.RowsAffected()
 	}
 
-	// 3. Hapus groups yang parent_id-nya tidak ada (orphan)
 	r3, _ := a.db.Exec(`
 		DELETE FROM idol_groups
 		WHERE parent_id IS NOT NULL
@@ -1719,7 +1828,6 @@ func (a *App) StartGroupDownload(groupID int, platforms []string) map[string]int
 		return res
 	}
 
-	// ⚡ Pakai download_worker.py mode group
 	cfgMap := map[string]interface{}{
 		"group_id":  groupID,
 		"platforms": platforms,
@@ -2237,6 +2345,17 @@ func (a *App) resolveAllPaths(exeDir string) map[string][]string {
 		)
 	}
 
+	// ✅ Facebook path resolution
+	facebookPath := resolvePath(cfg.Facebook)
+	if facebookPath == "" {
+		facebookPath = findFolder(
+			filepath.Join(exeDir, "..", "..", "facebook", "facebook_downloads"),
+			filepath.Join(exeDir, "..", "..", "..", "facebook", "facebook_downloads"),
+			filepath.Join(pythonDownload, "facebook"),
+			filepath.Join(exeDir, "..", "..", "facebook"),
+		)
+	}
+
 	LogDebug("")
 	LogDebug("📂 Final paths:")
 	if oldTwitter != "" {
@@ -2254,6 +2373,11 @@ func (a *App) resolveAllPaths(exeDir string) map[string][]string {
 	if ttPyPath != "" {
 		LogDebug("   🎵 TikTok (python):" + ttPyPath)
 	}
+	if facebookPath != "" {
+		LogDebug("   📘 Facebook:       " + facebookPath)
+	} else {
+		LogDebug("   📘 Facebook:       (not configured)")
+	}
 
 	return map[string][]string{
 		"twitter":      {oldTwitter},
@@ -2261,10 +2385,14 @@ func (a *App) resolveAllPaths(exeDir string) map[string][]string {
 		"tiktok":       {oldTikTok},
 		"py_instagram": {igPyPath},
 		"py_tiktok":    {ttPyPath},
+		"facebook":     {facebookPath}, // ✅ NEW
 	}
 }
 
 func (a *App) ReindexDatabase() ReindexResult {
+	a.reindexMu.Lock()
+	defer a.reindexMu.Unlock()
+
 	result := ReindexResult{}
 	startTime := time.Now()
 
@@ -2316,6 +2444,7 @@ func (a *App) ReindexDatabase() ReindexResult {
 		db.Exec(p)
 	}
 
+	// ✅ SCHEMA UPDATE: full_path UNIQUE (senior best practice)
 	mediaSchema := `
 		DROP TABLE IF EXISTS media_fts;
 		DROP TABLE IF EXISTS media_tags;
@@ -2326,7 +2455,8 @@ func (a *App) ReindexDatabase() ReindexResult {
 			platform TEXT NOT NULL, account TEXT NOT NULL, type TEXT NOT NULL,
 			filename TEXT, folder TEXT, year TEXT, timestamp TEXT,
 			caption TEXT, likes INTEGER DEFAULT 0, url TEXT,
-			full_path TEXT, thumbnail TEXT
+			full_path TEXT UNIQUE NOT NULL,
+			thumbnail TEXT
 		);
 		CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);
 		CREATE TABLE media_tags (media_id INTEGER, tag_id INTEGER, PRIMARY KEY (media_id, tag_id));
@@ -2377,7 +2507,11 @@ func (a *App) ReindexDatabase() ReindexResult {
 	db.Exec(`CREATE INDEX IF NOT EXISTS idx_idol_groups_parent ON idol_groups(parent_id)`)
 	db.Exec(`CREATE INDEX IF NOT EXISTS idx_idol_accounts_group ON idol_accounts(group_id)`)
 	db.Exec(`CREATE INDEX IF NOT EXISTS idx_idol_runs_group ON idol_group_runs(group_id)`)
-
+	db.Exec(`CREATE TABLE IF NOT EXISTS app_settings (
+		key TEXT PRIMARY KEY,
+		value TEXT,
+		updated_at TEXT
+	)`)
 	runtime.EventsEmit(a.ctx, "indexProgress", IndexProgress{Phase: "counting"})
 
 	twCount := a.countTwitter(paths["twitter"])
@@ -2385,7 +2519,8 @@ func (a *App) ReindexDatabase() ReindexResult {
 	igPyCount := a.countInstagram(paths["py_instagram"])
 	ttOldCount := a.countTikTokOld(paths["tiktok"])
 	ttPyCount := a.countTikTokNew(paths["py_tiktok"])
-	total := twCount + igOldCount + igPyCount + ttOldCount + ttPyCount
+	fbCount := a.countFacebook(paths["facebook"]) // ✅ NEW
+	total := twCount + igOldCount + igPyCount + ttOldCount + ttPyCount + fbCount
 
 	LogDebug("")
 	LogDebug("📊 Counting:")
@@ -2394,6 +2529,7 @@ func (a *App) ReindexDatabase() ReindexResult {
 	LogDebug(fmt.Sprintf("   IG (python):     %d", igPyCount))
 	LogDebug(fmt.Sprintf("   TikTok (old):    %d", ttOldCount))
 	LogDebug(fmt.Sprintf("   TikTok (python): %d", ttPyCount))
+	LogDebug(fmt.Sprintf("   Facebook:        %d", fbCount)) // ✅ NEW
 	LogDebug(fmt.Sprintf("   TOTAL:           %d", total))
 
 	if total == 0 {
@@ -2441,6 +2577,7 @@ func (a *App) ReindexDatabase() ReindexResult {
 	igPy := a.loadInstagram(stmts, paths["py_instagram"], progressCb)
 	ttOld := a.loadTikTokOld(stmts, paths["tiktok"], progressCb)
 	ttPy := a.loadTikTokNew(stmts, paths["py_tiktok"], progressCb)
+	fb := a.loadFacebook(stmts, paths["facebook"], progressCb) // ✅ NEW
 
 	tx.Commit()
 
@@ -2452,12 +2589,12 @@ func (a *App) ReindexDatabase() ReindexResult {
 	db.Close()
 	a.connectDB()
 
-	loaded := tw + igOld + igPy + ttOld + ttPy
+	loaded := tw + igOld + igPy + ttOld + ttPy + fb // ✅ NEW
 	result.Success = true
 	result.Total = loaded
 	result.Message = fmt.Sprintf(
-		"Indexed %d media (Twitter:%d, IG:%d, IG-Py:%d, TikTok:%d, TikTok-Py:%d) in %.2fs",
-		loaded, tw, igOld, igPy, ttOld, ttPy, time.Since(startTime).Seconds())
+		"Indexed %d media (Twitter:%d, IG:%d, IG-Py:%d, TikTok:%d, TikTok-Py:%d, Facebook:%d) in %.2fs",
+		loaded, tw, igOld, igPy, ttOld, ttPy, fb, time.Since(startTime).Seconds())
 
 	LogDebug("")
 	LogDebug("✅ Selesai: " + result.Message)
@@ -2467,10 +2604,13 @@ func (a *App) ReindexDatabase() ReindexResult {
 }
 
 // ══════════════════════════════════════════════════════════
-// REINDEX — INCREMENTAL (Quick Scan)
+// REINDEX — INCREMENTAL (Quick Scan) — FIXED: Transaction wrap
 // ══════════════════════════════════════════════════════════
 
 func (a *App) ReindexIncremental() ReindexResult {
+	a.reindexMu.Lock()
+	defer a.reindexMu.Unlock()
+
 	result := ReindexResult{}
 	startTime := time.Now()
 
@@ -2489,23 +2629,30 @@ func (a *App) ReindexIncremental() ReindexResult {
 		return result
 	}
 
-	existing := map[string]bool{}
-	rows, err := a.db.Query("SELECT full_path FROM media")
-	if err == nil {
-		for rows.Next() {
-			var p string
-			rows.Scan(&p)
-			existing[p] = true
-		}
-		rows.Close()
+	// ⚡ FIX: Bungkus semua dalam 1 transaction
+	tx, err := a.db.Begin()
+	if err != nil {
+		result.Message = "Tx begin error: " + err.Error()
+		return result
 	}
-	LogDebug(fmt.Sprintf("📊 Existing: %d", len(existing)))
+	committed := false
+	defer func() {
+		if !committed {
+			tx.Rollback()
+		}
+	}()
 
-	stmtMedia, _ := a.db.Prepare(`INSERT INTO media (platform,account,type,filename,folder,year,
-		timestamp,caption,likes,url,full_path,thumbnail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
-	stmtTag, _ := a.db.Prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)")
-	stmtGetTag, _ := a.db.Prepare("SELECT id FROM tags WHERE name = ?")
-	stmtMediaTag, _ := a.db.Prepare("INSERT OR IGNORE INTO media_tags (media_id, tag_id) VALUES (?,?)")
+	stmtMedia, _ := tx.Prepare(`INSERT INTO media (platform,account,type,filename,folder,year,
+		timestamp,caption,likes,url,full_path,thumbnail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+		ON CONFLICT(full_path) DO UPDATE SET
+			caption = CASE WHEN excluded.caption != '' THEN excluded.caption ELSE media.caption END,
+			thumbnail = CASE WHEN excluded.thumbnail != '' THEN excluded.thumbnail ELSE media.thumbnail END,
+			timestamp = CASE WHEN excluded.timestamp != '' THEN excluded.timestamp ELSE media.timestamp END,
+			year = CASE WHEN excluded.year != '' AND excluded.year != 'Unknown' THEN excluded.year ELSE media.year END
+		RETURNING id`)
+	stmtTag, _ := tx.Prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)")
+	stmtGetTag, _ := tx.Prepare("SELECT id FROM tags WHERE name = ?")
+	stmtMediaTag, _ := tx.Prepare("INSERT OR IGNORE INTO media_tags (media_id, tag_id) VALUES (?,?)")
 
 	defer stmtMedia.Close()
 	defer stmtTag.Close()
@@ -2513,9 +2660,30 @@ func (a *App) ReindexIncremental() ReindexResult {
 	defer stmtMediaTag.Close()
 
 	inserted := 0
-	skipped := 0
 
-	// INSTAGRAM
+	insertOrUpdate := func(platform, account, mtype, filename, folder, year,
+		timestamp, caption string, likes int, url, fullPath, thumb string, tags []string) {
+
+		var id int64
+		err := stmtMedia.QueryRow(platform, account, mtype, filename, folder, year,
+			timestamp, caption, likes, url, fullPath, thumb).Scan(&id)
+		if err != nil {
+			return
+		}
+		inserted++
+
+		for _, tag := range tags {
+			if tag == "" {
+				continue
+			}
+			stmtTag.Exec(tag)
+			var tagID int64
+			stmtGetTag.QueryRow(tag).Scan(&tagID)
+			stmtMediaTag.Exec(id, tagID)
+		}
+	}
+
+	// ─── INSTAGRAM ───
 	igPaths := paths["py_instagram"]
 	if len(igPaths) > 0 && igPaths[0] != "" {
 		entries, _ := os.ReadDir(igPaths[0])
@@ -2559,10 +2727,6 @@ func (a *App) ReindexIncremental() ReindexResult {
 					if err != nil || info.IsDir() {
 						return nil
 					}
-					if existing[path] {
-						skipped++
-						return nil
-					}
 					ext := strings.ToLower(filepath.Ext(path))
 					isPhoto := ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp"
 					isVideo := ext == ".mp4" || ext == ".mov" || ext == ".webm"
@@ -2592,30 +2756,16 @@ func (a *App) ReindexIncremental() ReindexResult {
 					if isVideo {
 						mtype = "video"
 					}
-					res, err := stmtMedia.Exec("Instagram", username, mtype, info.Name(),
+					insertOrUpdate("Instagram", username, mtype, info.Name(),
 						strings.ReplaceAll(relPath, "\\", "/"), year, tsKey, caption,
-						likes, url, path, thumb)
-					if err == nil {
-						mediaID, _ := res.LastInsertId()
-						for _, tag := range tags {
-							if tag == "" {
-								continue
-							}
-							stmtTag.Exec(tag)
-							var tagID int64
-							stmtGetTag.QueryRow(tag).Scan(&tagID)
-							stmtMediaTag.Exec(mediaID, tagID)
-						}
-						inserted++
-						existing[path] = true
-					}
+						likes, url, path, thumb, tags)
 					return nil
 				})
 			}
 		}
 	}
 
-	// TIKTOK
+	// ─── TIKTOK ───
 	ttPaths := paths["py_tiktok"]
 	if len(ttPaths) > 0 && ttPaths[0] != "" {
 		entries, _ := os.ReadDir(ttPaths[0])
@@ -2626,10 +2776,6 @@ func (a *App) ReindexIncremental() ReindexResult {
 			userFolder := filepath.Join(ttPaths[0], entry.Name())
 			filepath.Walk(userFolder, func(path string, info os.FileInfo, err error) error {
 				if err != nil || info.IsDir() {
-					return nil
-				}
-				if existing[path] {
-					skipped++
 					return nil
 				}
 				ext := strings.ToLower(filepath.Ext(path))
@@ -2673,32 +2819,30 @@ func (a *App) ReindexIncremental() ReindexResult {
 						break
 					}
 				}
-				res, err := stmtMedia.Exec("TikTok", entry.Name(), "video", filename,
-					relPath, year, timestamp, caption, 0, "", path, thumbPath)
-				if err == nil {
-					mediaID, _ := res.LastInsertId()
-					for _, tag := range tags {
-						if tag == "" {
-							continue
-						}
-						stmtTag.Exec(tag)
-						var tagID int64
-						stmtGetTag.QueryRow(tag).Scan(&tagID)
-						stmtMediaTag.Exec(mediaID, tagID)
-					}
-					inserted++
-					existing[path] = true
-				}
+				insertOrUpdate("TikTok", entry.Name(), "video", filename,
+					relPath, year, timestamp, caption, 0, "", path, thumbPath, tags)
 				return nil
 			})
 		}
 	}
 
+	// ─── FACEBOOK ───
+	fbPaths := paths["facebook"]
+	if len(fbPaths) > 0 && fbPaths[0] != "" {
+		a.scanFacebookFolder(fbPaths[0], insertOrUpdate)
+	}
+
+	// ⚡ Commit di akhir
+	if err := tx.Commit(); err != nil {
+		result.Message = "Commit error: " + err.Error()
+		return result
+	}
+	committed = true
+
 	elapsed := time.Since(startTime).Seconds()
 	result.Success = true
 	result.Total = inserted
-	result.Message = fmt.Sprintf("%d media baru (skip %d) dalam %.2fs",
-		inserted, skipped, elapsed)
+	result.Message = fmt.Sprintf("%d media diproses dalam %.2fs", inserted, elapsed)
 
 	LogDebug("✅ " + result.Message)
 	return result
@@ -2726,6 +2870,8 @@ func (a *App) ReindexAccount(platform, username string) ReindexResult {
 		userFolder = filepath.Join(paths["py_instagram"][0], username)
 	} else if platform == "TikTok" && len(paths["py_tiktok"]) > 0 {
 		userFolder = filepath.Join(paths["py_tiktok"][0], username)
+	} else if platform == "Facebook" && len(paths["facebook"]) > 0 {
+		userFolder = filepath.Join(paths["facebook"][0], username)
 	}
 
 	if userFolder == "" {
@@ -2737,7 +2883,6 @@ func (a *App) ReindexAccount(platform, username string) ReindexResult {
 		return result
 	}
 
-	// Delete existing
 	mediaIDs := []int{}
 	rows, err := a.db.Query("SELECT id FROM media WHERE platform = ? AND account = ?",
 		platform, username)
@@ -2886,6 +3031,76 @@ func (a *App) ReindexAccount(platform, username string) ReindexResult {
 				}
 			}
 			res, err := stmtMedia.Exec("TikTok", username, "video", filename,
+				relPath, year, timestamp, caption, 0, "", path, thumbPath)
+			if err == nil {
+				mediaID, _ := res.LastInsertId()
+				for _, tag := range tags {
+					if tag == "" {
+						continue
+					}
+					stmtTag.Exec(tag)
+					var tagID int64
+					stmtGetTag.QueryRow(tag).Scan(&tagID)
+					stmtMediaTag.Exec(mediaID, tagID)
+				}
+				inserted++
+			}
+			return nil
+		})
+	} else if platform == "Facebook" {
+		// ✅ NEW: Facebook single account reindex
+		filepath.Walk(userFolder, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			ext := strings.ToLower(filepath.Ext(path))
+			if !videoExts[ext] {
+				return nil
+			}
+			filename := info.Name()
+			relPath, _ := filepath.Rel(userFolder, path)
+
+			caption, timestamp, year := "", "", "Unknown"
+			var tags []string
+
+			jsonFile := strings.TrimSuffix(path, ext) + ".info.json"
+			if data, err := os.ReadFile(jsonFile); err == nil {
+				var infoData map[string]interface{}
+				if json.Unmarshal(data, &infoData) == nil {
+					if v, ok := infoData["description"].(string); ok {
+						caption = v
+					} else if v, ok := infoData["title"].(string); ok {
+						caption = v
+					}
+					if v, ok := infoData["upload_date"].(string); ok && len(v) >= 8 {
+						year = v[:4]
+						timestamp = fmt.Sprintf("%s-%s-%s", v[:4], v[4:6], v[6:8])
+					}
+					if v, ok := infoData["timestamp"].(float64); ok {
+						tm := time.Unix(int64(v), 0)
+						timestamp = tm.Format("2006-01-02 15:04:05")
+						year = tm.Format("2006")
+					}
+					if arr, ok := infoData["tags"].([]interface{}); ok {
+						for _, tag := range arr {
+							if s, ok := tag.(string); ok {
+								tags = append(tags, s)
+							}
+						}
+					}
+				}
+			}
+
+			base := strings.TrimSuffix(path, ext)
+			thumbPath := ""
+			for _, tc := range []string{base + ".jpg", base + ".webp", base + ".png", base + "_thumb.jpg"} {
+				if _, err := os.Stat(tc); err == nil {
+					thumbPath = tc
+					break
+				}
+			}
+
+			res, err := stmtMedia.Exec("Facebook", username, "video", filename,
 				relPath, year, timestamp, caption, 0, "", path, thumbPath)
 			if err == nil {
 				mediaID, _ := res.LastInsertId()
@@ -3362,6 +3577,192 @@ func (a *App) loadTikTokNew(stmts *PreparedStmts, paths []string, cb func(string
 }
 
 // ══════════════════════════════════════════════════════════
+// FACEBOOK LOADER ✅ NEW
+// ══════════════════════════════════════════════════════════
+
+// loadFacebook — Full reindex version (bulk insert, transaction-safe)
+func (a *App) loadFacebook(stmts *PreparedStmts, paths []string, cb func(string, int)) int {
+	count := 0
+	for _, downloadsPath := range paths {
+		if downloadsPath == "" {
+			continue
+		}
+		entries, _ := os.ReadDir(downloadsPath)
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			pageFolder := filepath.Join(downloadsPath, entry.Name())
+			a.walkFacebookPage(pageFolder, entry.Name(), func(meta fbMeta) {
+				if insertMediaWithTags(stmts, "Facebook", meta.account, "video", meta.filename,
+					meta.folder, meta.year, meta.timestamp, meta.caption, 0, "", meta.fullPath,
+					meta.thumbPath, meta.tags) {
+					count++
+				}
+				cb("Facebook", count)
+			})
+		}
+	}
+	return count
+}
+
+// scanFacebookFolder — Untuk incremental reindex (pakai callback upsert)
+func (a *App) scanFacebookFolder(basePath string, insertOrUpdate func(
+	platform, account, mtype, filename, folder, year,
+	timestamp, caption string, likes int, url, fullPath, thumb string, tags []string)) {
+
+	entries, err := os.ReadDir(basePath)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		pageFolder := filepath.Join(basePath, entry.Name())
+		a.walkFacebookPage(pageFolder, entry.Name(), func(meta fbMeta) {
+			insertOrUpdate("Facebook", meta.account, "video", meta.filename,
+				meta.folder, meta.year, meta.timestamp, meta.caption, 0, "",
+				meta.fullPath, meta.thumbPath, meta.tags)
+		})
+	}
+}
+
+// fbMeta — internal struct untuk hasil parse Facebook
+type fbMeta struct {
+	account   string
+	filename  string
+	folder    string
+	year      string
+	timestamp string
+	caption   string
+	fullPath  string
+	thumbPath string
+	tags      []string
+}
+
+// walkFacebookPage — Walk satu folder Page, extract metadata, panggil callback
+func (a *App) walkFacebookPage(pageFolder, accountName string, callback func(fbMeta)) {
+	filepath.Walk(pageFolder, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(filepath.Ext(path))
+		if !videoExts[ext] {
+			return nil
+		}
+
+		filename := info.Name()
+		// relPath, _ := filepath.Rel(pageFolder, path)
+
+		caption := ""
+		timestamp := ""
+		year := "Unknown"
+		var tags []string
+
+		// Cari metadata JSON (yt-dlp style: .info.json)
+		jsonCandidates := []string{
+			strings.TrimSuffix(path, ext) + ".info.json",
+			strings.TrimSuffix(path, ext) + ".json",
+			path + ".info.json",
+		}
+
+		for _, jsonFile := range jsonCandidates {
+			data, err := os.ReadFile(jsonFile)
+			if err != nil {
+				continue
+			}
+			var meta map[string]interface{}
+			if json.Unmarshal(data, &meta) != nil {
+				continue
+			}
+
+			// Description / title
+			if v, ok := meta["description"].(string); ok && v != "" {
+				caption = v
+			} else if v, ok := meta["title"].(string); ok && v != "" {
+				caption = v
+			} else if v, ok := meta["fulltitle"].(string); ok && v != "" {
+				caption = v
+			}
+
+			// Upload date
+			if v, ok := meta["upload_date"].(string); ok && len(v) >= 8 {
+				year = v[:4]
+				timestamp = fmt.Sprintf("%s-%s-%s", v[:4], v[4:6], v[6:8])
+			}
+
+			// Timestamp unix (lebih akurat)
+			if v, ok := meta["timestamp"].(float64); ok {
+				tm := time.Unix(int64(v), 0)
+				timestamp = tm.Format("2006-01-02 15:04:05")
+				year = tm.Format("2006")
+			}
+
+			// Tags
+			if arr, ok := meta["tags"].([]interface{}); ok {
+				for _, tag := range arr {
+					if s, ok := tag.(string); ok && s != "" {
+						tags = append(tags, s)
+					}
+				}
+			}
+
+			// Hashtags dari caption sebagai fallback
+			if len(tags) == 0 && caption != "" {
+				tags = extractHashtags(caption)
+			}
+
+			// Kalau ada thumbnail path di metadata
+			if v, ok := meta["thumbnail"].(string); ok && v != "" {
+				if _, err := os.Stat(v); err == nil {
+					// thumbnail path valid
+				}
+			}
+
+			break // sudah ketemu, tidak perlu lanjut ke candidate berikutnya
+		}
+
+		// Cari thumbnail lokal
+		base := strings.TrimSuffix(path, ext)
+		thumbPath := ""
+		for _, tc := range []string{
+			base + ".jpg",
+			base + ".jpeg",
+			base + ".webp",
+			base + ".png",
+			base + "_thumb.jpg",
+			base + ".thumbnail",
+		} {
+			if _, err := os.Stat(tc); err == nil {
+				thumbPath = tc
+				break
+			}
+		}
+
+		// Kalau tidak ada caption, pakai nama file sebagai fallback
+		if caption == "" {
+			caption = strings.TrimSuffix(filename, ext)
+		}
+
+		callback(fbMeta{
+			account:   accountName,
+			filename:  filename,
+			folder:    filepath.Base(pageFolder),
+			year:      year,
+			timestamp: timestamp,
+			caption:   caption,
+			fullPath:  path,
+			thumbPath: thumbPath,
+			tags:      tags,
+		})
+
+		return nil
+	})
+}
+
+// ══════════════════════════════════════════════════════════
 // COUNTERS
 // ══════════════════════════════════════════════════════════
 
@@ -3433,6 +3834,24 @@ func (a *App) countTikTokOld(paths []string) int {
 }
 
 func (a *App) countTikTokNew(paths []string) int {
+	count := 0
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		entries, _ := os.ReadDir(p)
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			filepath.Walk(filepath.Join(p, e.Name()), countFiles(&count, videoExts))
+		}
+	}
+	return count
+}
+
+// countFacebook ✅ NEW
+func (a *App) countFacebook(paths []string) int {
 	count := 0
 	for _, p := range paths {
 		if p == "" {
