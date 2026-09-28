@@ -2,6 +2,8 @@
 import os
 import re
 import json
+import time
+import glob
 import shutil
 import subprocess
 import threading
@@ -9,6 +11,19 @@ import threading
 from shared.paths import DOWNLOAD_TIKTOK, TIKTOK_COOKIES, DATA_TIKTOK
 from shared.utils import ensure_dirs
 from tiktok.config import TikTokConfig
+
+# [PATCH #2] Impersonate target bisa di-override via env tanpa edit kode.
+# Contoh: set TIKTOK_IMPERSONATE=chrome-132 kalau chrome-131 mulai diblokir.
+# Cek target tersedia: yt-dlp --list-impersonate-targets
+IMPERSONATE_TARGET = os.environ.get("TIKTOK_IMPERSONATE", "chrome-131")
+
+# [OPTIMASI] Batas maksimum video yang dicek untuk deteksi "sudah ada".
+# Nilai lebih kecil = lebih cepat, tapi risiko miss video baru kalau user upload
+# banyak antara 2 run. Rekomendasi:
+#   - Run harian: 10
+#   - Run mingguan: 20 (default)
+#   - Run bulanan: 50
+PLAYLIST_END = int(os.environ.get("TIKTOK_PLAYLIST_END", "20"))
 
 YTDLP_AVAILABLE = shutil.which("yt-dlp") is not None
 
@@ -25,6 +40,12 @@ SKIP_PATTERNS = [
     "Video currently unavailable",
 ]
 
+# [PATCH #3] Error spesifik yang menandakan bot detection → trigger retry
+SEC_UID_ERROR_MARKERS = [
+    "unable to extract secondary user id",
+    "unable to extract primary user id",
+]
+
 
 # ══════════════════════════════════════════════════════════
 # SEC_UID CACHE HELPERS
@@ -39,6 +60,20 @@ def _load_sec_uid_cache():
     except Exception:
         pass
     return {}
+
+
+# [PATCH #1] Atomic write untuk hindari corrupt saat crash
+def _save_sec_uid_cache(cache):
+    """Simpan cache dengan atomic write (tmp + rename)."""
+    try:
+        ensure_dirs(os.path.dirname(SEC_UID_CACHE))
+        tmp = SEC_UID_CACHE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f, indent=2, sort_keys=True)
+        os.replace(tmp, SEC_UID_CACHE)
+        return True
+    except Exception:
+        return False
 
 
 def _extract_username_from_url(url):
@@ -58,6 +93,50 @@ def _resolve_effective_url(url):
         if username in cache:
             return f"tiktokuser:{cache[username]}", username
     return url, username
+
+
+# [PATCH #1] Auto-populate sec_uid cache dari info.json hasil yt-dlp
+def _find_channel_id_from_recent_info(download_start_ts):
+    """
+    Scan file .info.json yang dibuat setelah download_start_ts,
+    return channel_id (sec_uid) dari file terbaru yang valid.
+    """
+    try:
+        pattern = os.path.join(DOWNLOAD_TIKTOK, "**", "*.info.json")
+        files = glob.glob(pattern, recursive=True)
+        files = [f for f in files if os.path.getmtime(f) >= download_start_ts]
+        files.sort(key=os.path.getmtime, reverse=True)
+
+        for path in files[:20]:  # batasi 20 file terbaru
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    info = json.load(fh)
+                cid = info.get("channel_id")
+                if cid and len(str(cid)) >= 15:
+                    return str(cid)
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return None
+
+
+# [PATCH #1] Simpan sec_uid ke cache kalau belum ada / berbeda
+def _maybe_cache_sec_uid(username, download_start_ts, on_log):
+    """Cek apakah perlu update cache sec_uid. Dipanggil setelah download."""
+    if not username or username.startswith("_") or username.startswith("@"):
+        return
+    try:
+        cache = _load_sec_uid_cache()
+        if username in cache:
+            return  # sudah ada, skip (hindari I/O tiap download)
+        cid = _find_channel_id_from_recent_info(download_start_ts)
+        if cid:
+            cache[username] = cid
+            if _save_sec_uid_cache(cache):
+                on_log(f"   💾 Cached sec_uid untuk @{username}: {cid[:20]}...")
+    except Exception:
+        pass
 
 
 # ══════════════════════════════════════════════════════════
@@ -155,6 +234,12 @@ class TikTokDownloader:
                 return False
         return False
 
+    # [PATCH #6] Deteksi apakah URL adalah playlist user atau single video
+    @staticmethod
+    def _is_single_video(url):
+        """True kalau URL adalah single video (/video/ID)."""
+        return "/video/" in url and "tiktokuser:" not in url
+
     # ══════════════════════════════════════════════════════
     # BUILD COMMAND
     # ══════════════════════════════════════════════════════
@@ -173,7 +258,6 @@ class TikTokDownloader:
                 "b"
             )
             fs = "res:1080,fps"
-
         elif quality == "sd":
             fmt = (
                 "h264_720p/h265_720p/bytevc1_720p/"
@@ -183,13 +267,15 @@ class TikTokDownloader:
                 "b"
             )
             fs = "res:720"
-
         else:
             fmt, fs = "b", "res"
 
+        is_single = TikTokDownloader._is_single_video(url)
+
         cmd = [
             "yt-dlp",
-            "--impersonate", "chrome-131",
+            # [PATCH #2] Pakai IMPERSONATE_TARGET dari env
+            "--impersonate", IMPERSONATE_TARGET,
             "--format", fmt,
             "--format-sort", fs,
             "--output", tpl,
@@ -197,16 +283,33 @@ class TikTokDownloader:
             "--write-thumbnail",
             "--convert-thumbnails", "jpg",
             "--merge-output-format", "mp4",
-            "--no-warnings",
+            # [PATCH #4] Tanpa --no-warnings biar warning penting tetap muncul,
+            # baris [debug] difilter di parser output
             "--newline",
             "--progress",
-            "--retries", "2",
-            "--fragment-retries", "2",
-            "--ignore-errors",
-            "--no-abort-on-error",
-            "--no-overwrites",
+            "--retries", "3",                      # [PATCH #5] naik dari 2
+            "--fragment-retries", "3",             # [PATCH #5] naik dari 2
+            "--extractor-retries", "5",            # [PATCH #5] BARU
+            "--sleep-requests", "2",               # [PATCH #5] BARU — hindari rate limit
             "--socket-timeout", "30",
+            "--no-overwrites",
         ]
+
+        # [PATCH #6] Hanya pakai --ignore-errors untuk playlist (user),
+        #           BUKAN untuk single video — biar error tidak disamarkan.
+        if not is_single:
+            cmd.extend([
+                "--ignore-errors",
+                "--no-abort-on-error",
+                # ⚡ [OPTIMASI] STOP begitu ketemu video yang sudah di archive.
+                #    Karena urutan TikTok baru→lama, ini bikin cek cuma beberapa video saja.
+                "--break-on-existing",
+                # ⚡ [OPTIMASI] Proses entry sambil jalan, jangan tunggu full extraction.
+                "--lazy-playlist",
+                # ⚡ [OPTIMASI] Safety net: minimal cek N video teratas.
+                #    Ini juga jadi cap fetch page — cegah yt-dlp buka puluhan page.
+                "--playlist-end", str(PLAYLIST_END),
+            ])
 
         if use_archive:
             cmd.extend([
@@ -224,12 +327,24 @@ class TikTokDownloader:
     def _is_skip_error(line):
         return any(p.lower() in line.lower() for p in SKIP_PATTERNS)
 
+    # [PATCH #3] Deteksi error bot detection untuk trigger retry
+    @staticmethod
+    def _is_sec_uid_error(line):
+        low = line.lower()
+        return any(m in low for m in SEC_UID_ERROR_MARKERS)
+
     # ══════════════════════════════════════════════════════
     # DOWNLOAD (single URL)
     # ══════════════════════════════════════════════════════
     @staticmethod
     def download(url, quality="hd", use_archive=True,
-                 stop_event=None, on_log=None, on_progress=None):
+                 stop_event=None, on_log=None, on_progress=None,
+                 _retry=0):
+        """
+        Download TikTok user / single video.
+
+        _retry: internal flag (0 = percobaan pertama, 1 = retry via sec_uid cache)
+        """
         stop_event = stop_event or threading.Event()
         on_log = on_log or (lambda m: None)
         on_progress = on_progress or (lambda p, m: None)
@@ -239,6 +354,9 @@ class TikTokDownloader:
             return False
 
         ensure_dirs(DOWNLOAD_TIKTOK)
+
+        # Catat timestamp awal download untuk deteksi info.json baru
+        download_start_ts = time.time()  # [PATCH #1]
 
         # ⚡ Resolve effective URL (sec_uid cache)
         effective_url, username = _resolve_effective_url(url)
@@ -257,6 +375,9 @@ class TikTokDownloader:
 
         if effective_url != url:
             on_log(f"   🎯 Pakai sec_uid cache untuk @{username}")
+
+        if _retry > 0:
+            on_log(f"   🔄 Retry attempt #{_retry}")
 
         cmd = TikTokDownloader.build_cmd(
             effective_url, quality,
@@ -287,6 +408,9 @@ class TikTokDownloader:
                 "thumbnails": 0,
             }
 
+            # [PATCH #3] Flag untuk retry via sec_uid cache
+            sec_uid_error_seen = False
+
             for line in p.stdout:
                 if stop_event.is_set():
                     try:
@@ -300,6 +424,10 @@ class TikTokDownloader:
                 if not line:
                     continue
                 low = line.lower()
+
+                # [PATCH #4] Filter baris [debug] biar tidak spam GUI
+                if low.startswith("[debug]"):
+                    continue
 
                 if "[download]" in line and "%" in line:
                     try:
@@ -334,6 +462,13 @@ class TikTokDownloader:
                     continue
 
                 if "error" in low:
+                    # [PATCH #3] Cek dulu apakah ini sec_uid error
+                    if TikTokDownloader._is_sec_uid_error(line):
+                        sec_uid_error_seen = True
+                        stats["failed"] += 1
+                        on_log(f"   ⚠️  Bot detection: {line[:150]}")
+                        continue
+
                     if TikTokDownloader._is_skip_error(line):
                         stats["skipped_error"] += 1
                         reason = "IP blocked"
@@ -352,6 +487,24 @@ class TikTokDownloader:
 
             p.wait()
 
+            # [PATCH #7] Logic success lebih ketat
+            if TikTokDownloader._is_single_video(url):
+                success = stats["success"] > 0 and stats["failed"] == 0
+            else:
+                success = (
+                    stats["failed"] == 0
+                    and (stats["success"] > 0 or stats["skipped_archive"] > 0)
+                )
+
+            # [OPTIMASI] Kalau --break-on-existing trigger sebelum ada video baru,
+            # yt-dlp exit 0 tanpa hit stats["success"] ataupun skipped_archive
+            # (karena "break" bukan "skip"). Anggap ini sukses.
+            if not success and stats["failed"] == 0 and not TikTokDownloader._is_single_video(url):
+                if stats["success"] == 0 and stats["skipped_archive"] == 0 and stats["skipped_error"] == 0:
+                    # Kemungkinan besar break-on-existing trigger sebelum hit existing
+                    # → artinya tidak ada video baru. Treat as success.
+                    success = True
+
             on_log("")
             on_log("=" * 55)
             on_log("📊 SUMMARY")
@@ -368,9 +521,6 @@ class TikTokDownloader:
                 if exists:
                     on_log(f"📚 Total archive: {total} video")
 
-            total_done = stats["success"] + stats["skipped_archive"] + stats["skipped_error"]
-            success = total_done > 0 or stats["failed"] == 0
-
             if stats["success"] == 0 and stats["skipped_archive"] > 0:
                 on_log("🎉 Semua video sudah pernah didownload sebelumnya!")
             elif stats["success"] > 0:
@@ -379,6 +529,33 @@ class TikTokDownloader:
                 on_log("⚠️  Tidak ada video yang diproses")
 
             on_progress(1.0, "Selesai")
+
+            # [PATCH #1] Auto-populate sec_uid cache dari info.json hasil download
+            if success and username and "tiktokuser:" not in effective_url:
+                _maybe_cache_sec_uid(username, download_start_ts, on_log)
+
+            # [PATCH #3] Fallback retry: kalau kena sec_uid error dan ada cache,
+            #            coba lagi pakai tiktokuser:SEC_UID.
+            if not success and sec_uid_error_seen and _retry == 0 and username:
+                cache = _load_sec_uid_cache()
+                if username in cache:
+                    on_log("")
+                    on_log("🔄 Fallback: retry via cached sec_uid...")
+                    return TikTokDownloader.download(
+                        f"tiktokuser:{cache[username]}",
+                        quality=quality,
+                        use_archive=use_archive,
+                        stop_event=stop_event,
+                        on_log=on_log,
+                        on_progress=on_progress,
+                        _retry=1,
+                    )
+                else:
+                    on_log("")
+                    on_log("⚠️  Tidak ada cache sec_uid untuk fallback.")
+                    on_log("   Jalankan download 1 video dari user ini dulu,")
+                    on_log("   atau set TIKTOK_IID env untuk mobile API.")
+
             return success
 
         except KeyboardInterrupt:
